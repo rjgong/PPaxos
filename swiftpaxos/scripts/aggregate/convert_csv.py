@@ -30,23 +30,24 @@ def get_stat(exp, protocol, alias):
         f.close()
     return table
 
-experiment_number = 3
-folder_path = f"{ROOT_PATH}/exp{experiment_number}"
-protocols = [x for x in os.listdir(folder_path) if os.path.isdir(f"{folder_path}/{x}")]
+experiment_numbers = [1]
+for experiment_number in experiment_numbers:
+    folder_path = f"{ROOT_PATH}/exp{experiment_number}"
+    protocols = [x for x in os.listdir(folder_path) if os.path.isdir(f"{folder_path}/{x}")]
 
-#Sort per alias in a protocol
-for protocol in protocols:
-    folder_path = f"{ROOT_PATH}/exp{experiment_number}/{protocol}"
-    aliases = [x for x in os.listdir(folder_path) if os.path.isdir(f"{folder_path}/{x}")]
-    for alias in aliases:
-        table = get_stat(experiment_number, protocol, alias)
-        table = sorted(table, key = lambda row: float(row["latency"]))
+    #Sort per alias in a protocol
+    for protocol in protocols:
+        folder_path = f"{ROOT_PATH}/exp{experiment_number}/{protocol}"
+        aliases = [x for x in os.listdir(folder_path) if os.path.isdir(f"{folder_path}/{x}")]
+        for alias in aliases:
+            table = get_stat(experiment_number, protocol, alias)
+            table = sorted(table, key = lambda row: float(row["latency"]))
 
-        folder_path = f"{ROOT_PATH}/exp{experiment_number}/{protocol}/{alias}"
-        field_names = ["protocol", "alias", "command", "latency", "clone"]
-        f = open(f"{folder_path}/transactions.csv", "w")
-        writer = csv.DictWriter(f, fieldnames=field_names)
-        writer.writeheader()
-        for row in table:
-            writer.writerow(row)
-        f.close() 
+            folder_path = f"{ROOT_PATH}/exp{experiment_number}/{protocol}/{alias}"
+            field_names = ["protocol", "alias", "command", "latency", "clone"]
+            f = open(f"{folder_path}/transactions.csv", "w")
+            writer = csv.DictWriter(f, fieldnames=field_names)
+            writer.writeheader()
+            for row in table:
+                writer.writerow(row)
+            f.close() 

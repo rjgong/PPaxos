@@ -42,16 +42,19 @@ def aggregate_protocol(path, variables, f):
         variables = aggregate_alias(f"{path}/{alias}/transactions.csv", variables, f)
     return variables
 
-def sorted_access(path, variables, f):
-    alias_files = [open(f"{path}/{x}/transactions.csv") for x in os.listdir(path) if os.path.isdir(f"{path}/{x}")]
+def sorted_csv_read(file_paths, field_name, variables, f): #For csv files (no need to be sorted)
+    alias_files = [open(path) for path in file_paths if os.path.isfile(path) and os.path.splitext(path)[-1] == ".csv"]
     alias_readers = [csv.DictReader(x) for x in alias_files]
     n = len(alias_readers)
 
     if n == 0:
         return variables
-
+    
     #Get total number of records
-    total_records = sum(1 for _ in alias_readers[0])
+    total_records = 0
+    for reader in alias_readers:
+        total_records += sum(1 for _ in reader)
+    
     iterators = []
     for i in range(1, n):
         alias_files[i - 1].seek(0)
@@ -62,7 +65,7 @@ def sorted_access(path, variables, f):
 
     counts = [0 for _ in alias_readers]
     rows = [next(iter, None) for iter in iterators]
-    latencies = [float(row["latency"]) if row is not None else float("inf") for row in rows]
+    latencies = [float(row[field_name]) if row is not None else float("inf") for row in rows]
     idx = latencies.index(min(latencies))
     counts[idx] += 1
     while sum(counts)<=total_records:
@@ -71,13 +74,21 @@ def sorted_access(path, variables, f):
         variables = f(row, variables)
 
         rows = [next(iter, None) if i == idx else rows[i] for i, iter in enumerate(iterators)]
-        latencies = [float(row["latency"]) if row is not None else float("inf") for row in rows]
+        latencies = [float(row[field_name]) if row is not None else float("inf") for row in rows]
         idx = latencies.index(min(latencies))
         counts[idx] += 1
 
     for f in alias_files:
         f.close()
     return variables
+
+def sorted_access(path, variables, f):
+    alias_files = [f"{path}/{x}/transactions.csv" for x in os.listdir(path) if os.path.isdir(f"{path}/{x}")]
+    return sorted_csv_read(alias_files, "latency", variables, f)
+
+def sorted_access_per_alias(path, variables, f):
+    alias_files = [f"{path}/transactions.csv"]
+    return sorted_csv_read(alias_files, "latency", variables, f)
 
 #Testing
 if __name__ == "__main__":

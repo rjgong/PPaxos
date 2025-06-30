@@ -1,43 +1,85 @@
 {
     "nodes": [
             {
-                "node_address": "ec2-43-207-94-164.ap-northeast-1.compute.amazonaws.com",
+                "node_address": "ec2-18-180-59-236.ap-northeast-1.compute.amazonaws.com",
                 "user": "ubuntu",
                 "key_path": "~/.ssh/abel-exp.pem",
                 "alias": "master",
                 "roles": "master",
-                "server_ip": "43.207.94.164"
+                "server_ip": "18.180.59.236"
             },
             {
-                "node_address": "ec2-3-112-61-18.ap-northeast-1.compute.amazonaws.com",
+                "node_address": "ec2-3-115-105-65.ap-northeast-1.compute.amazonaws.com",
                 "user": "ubuntu",
                 "key_path": "~/.ssh/abel-exp.pem",
                 "alias": "comp1",
                 "roles": "replica"
             },
             {
-                "node_address": "ec2-54-160-172-67.compute-1.amazonaws.com",
+                "node_address": "ec2-13-39-158-100.eu-west-3.compute.amazonaws.com",
                 "user": "ubuntu",
-                "key_path": "~/.ssh/abel-exp-us.pem",
+                "key_path": "~/.ssh/abel-exp-eu.pem",
                 "alias": "comp2",
                 "roles": "replica"
             },
             {
-                "node_address": "ec2-13-39-158-246.eu-west-3.compute.amazonaws.com",
+                "node_address": "ec2-3-147-81-182.us-east-2.compute.amazonaws.com",
                 "user": "ubuntu",
-                "key_path": "~/.ssh/abel-exp-eu.pem",
+                "key_path": "~/.ssh/abel-exp-ohio.pem",
                 "alias": "comp3",
                 "roles": "replica"
             },
             {
-                "node_address": "ec2-35-78-246-76.ap-northeast-1.compute.amazonaws.com",
+                "node_address": "ec2-13-214-130-40.ap-southeast-1.compute.amazonaws.com",
+                "user": "ubuntu",
+                "key_path": "~/.ssh/abel-exp-singapore.pem",
+                "alias": "client1",
+                "roles": "client"
+            },
+            {
+                "node_address": "ec2-13-200-6-197.ap-south-1.compute.amazonaws.com",
+                "user": "ubuntu",
+                "key_path": "~/.ssh/abel-exp-mumbai.pem",
+                "alias": "client2",
+                "roles": "client"
+            },
+            {
+                "node_address": "ec2-3-8-200-88.eu-west-2.compute.amazonaws.com",
+                "user": "ubuntu",
+                "key_path": "~/.ssh/abel-exp-london.pem",
+                "alias": "client3",
+                "roles": "client"
+            },
+            {
+                "node_address": "ec2-54-81-143-41.compute-1.amazonaws.com",
+                "user": "ubuntu",
+                "key_path": "~/.ssh/abel-exp-us.pem",
+                "alias": "client4",
+                "roles": "client"
+            },
+            {
+                "node_address": "ec2-54-193-241-116.us-west-1.compute.amazonaws.com",
+                "user": "ubuntu",
+                "key_path": "~/.ssh/abel-exp-us-california.pem",
+                "alias": "client5",
+                "roles": "client"
+            },
+            {
+                "node_address": "ec2-15-228-89-211.sa-east-1.compute.amazonaws.com",
+                "user": "ubuntu",
+                "key_path": "~/.ssh/abel-exp-sa.pem",
+                "alias": "client6",
+                "roles": "client"
+            },
+            {
+                "node_address": "ec2-18-183-205-244.ap-northeast-1.compute.amazonaws.com",
                 "user": "ubuntu",
                 "key_path": "~/.ssh/abel-exp.pem",
-                "alias": "client1",
+                "alias": "client7",
                 "roles": "client"
             }
         ],
-    "exp":5,
-    "protocol": "paxos",
+    "exp":120,
+    "protocol": "epaxos",
     "config_file":"aws.conf"
 }

@@ -6,7 +6,7 @@ from utils import read_json
 
 #Set up nfs for everyone else
 
-replicas = read_json("scripts/conf.json", ["client"])
+replicas = read_json("scripts/conf.json", ["client", "replica"])
 mstr = read_json("scripts/conf.json", ["master"])[0]
 
 node_addresses = []
@@ -31,6 +31,7 @@ commands = [
 ]
 
 for i in range(n):
+    print("setting up: ", replicas[i]["alias"])
     address = f"{users[i]}@{node_addresses[i]}"
     key_path = key_paths[i]
     for cmd in commands:

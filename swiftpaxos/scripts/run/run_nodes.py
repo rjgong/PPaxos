@@ -44,9 +44,11 @@ subprocess.run(["ssh", "-i", master_key_path, f"{master_user}@{master_address}",
 subprocess.run(["ssh", "-i", master_key_path, f"{master_user}@{master_address}", f"sudo cp /mnt/share/src/swiftpaxos_copy/{config_file} /mnt/share/exp/exp{exp}"], check=True)
 
 print("starting master...")
-subprocess.Popen(["ssh", "-i", master_key_path, f"{master_user}@{master_address}", f"cd /mnt/share/src/swiftpaxos_copy && sudo git pull && go install -buildvcs=false && ~/go/bin/swiftpaxos -run master -config {config_file} -protocol {protocol}"])
+subprocess.Popen(["ssh", "-i", master_key_path, f"{master_user}@{master_address}", f"cd /mnt/share/src/swiftpaxos_copy && sudo git pull && go install -buildvcs=false && ~/go/bin/swiftpaxos -run master -config {config_file} -protocol {protocol} -quorum quorum.conf"])
 
-# #Run replica
+# breakpoint()
+
+#Run replica
 for i in range(n):
     print("starting " + aliases[i])
-    subprocess.Popen(["ssh", "-i", key_paths[i], f"{users[i]}@{node_addresses[i]}", f"cd /mnt/share/src/swiftpaxos_copy && go install -buildvcs=false && ~/go/bin/swiftpaxos -run server -config {config_file} -protocol {protocol} -alias {aliases[i]}"])
+    subprocess.Popen(["ssh", "-i", key_paths[i], f"{users[i]}@{node_addresses[i]}", f"cd /mnt/share/src/swiftpaxos_copy && go install -buildvcs=false && ~/go/bin/swiftpaxos -run server -config {config_file} -protocol {protocol} -alias {aliases[i]} -quorum quorum.conf"])

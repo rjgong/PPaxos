@@ -34,10 +34,9 @@ def run(id):
     subprocess.run(["ssh", "-i", key_path, address, f"sudo mkdir /mnt/share/exp/exp{experiment_number}/{protocol}/{alias}"], check=True)
     print(f"Starting {alias} ...")
     try:
-        subprocess.run(["ssh", "-i", key_path, address, f"cd /mnt/share/src/swiftpaxos_copy && go install -buildvcs=false && sudo ~/go/bin/swiftpaxos -run client -config aws.conf -protocol {protocol} -alias {alias} -log /mnt/share/exp/exp{experiment_number}/{protocol}/{alias}/{alias}_"], check=True, timeout=3600)
+        subprocess.run(["ssh", "-i", key_path, address, f"cd /mnt/share/src/swiftpaxos_copy && go install -buildvcs=false && sudo ~/go/bin/swiftpaxos -run client -config aws.conf -protocol {protocol} -log /mnt/share/exp/exp{experiment_number}/{protocol}/{alias}/{alias}_ -quorum quorum.conf"], check=True, timeout=3600)
     except Exception as e:
-        print(repr(e))
-        kill_proc(key_path, address)    
+        print(repr(e))    
     print(f"{alias} finished")
 
 for i in range(n):
