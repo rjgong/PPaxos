@@ -1,4 +1,4 @@
-package ppaxos
+package swift
 
 import (
 	"github.com/imdea-software/swiftpaxos/client"
@@ -201,24 +201,6 @@ func (c *Client) handleFastAck(f *MFastAck, fromLeader bool) bool {
 	return true
 }
 
-func (c *Client) handleAck(f *MFastAck, fromLeader bool) bool {
-	if c.ballot == -1 {
-		c.ballot = f.Ballot
-	} else if c.ballot < f.Ballot {
-		c.ballot = f.Ballot
-	} else if c.ballot > f.Ballot {
-		return false
-	}
-
-	if _, exists := c.delivered[f.CmdId]; exists {
-		return false
-	}
-
-	c.initMsgSets(f.CmdId)
-	c.fastPathH[f.CmdId].Add(f.Replica, fromLeader, f)
-	return true
-}
-
 func (c *Client) handleLightSlowAck(ls *MLightSlowAck) {
 	if _, exists := c.delivered[ls.CmdId]; exists {
 		return
@@ -268,7 +250,7 @@ func (c *Client) handleReply(r *MReply) {
 	f.CmdId = r.CmdId
 	f.Checksum = r.Checksum
 	c.val = r.Rep
-	c.handleAck(f, true)
+	c.handleFastAck(f, true)
 	if _, exists := c.delivered[f.CmdId]; !exists {
 		f := copyFastAck(f)
 		f.Checksum = nil

@@ -113,7 +113,7 @@ func IsRead(command *Command) bool {
 }
 
 func (c *Command) Execute(st *State) Value {
-
+	fmt.Println("Executing command", c.String())
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 

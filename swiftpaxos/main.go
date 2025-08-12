@@ -15,7 +15,6 @@ import (
 	"github.com/imdea-software/swiftpaxos/curp"
 	"github.com/imdea-software/swiftpaxos/dlog"
 	"github.com/imdea-software/swiftpaxos/master"
-	"github.com/imdea-software/swiftpaxos/ppaxos"
 	"github.com/imdea-software/swiftpaxos/replica/defs"
 	"github.com/imdea-software/swiftpaxos/swift"
 )
@@ -112,12 +111,13 @@ func runSingleClient(c *config.Config, i int, verbose bool) {
 
 	switch strings.ToLower(c.Protocol) {
 	case "swiftpaxos":
-	case "ppaxos":
 	case "curp":
 	case "fastpaxos":
 	case "n2paxos":
 		c.Fast = true
 		c.WaitClosest = true
+	case "eppaxos":
+	case "ppaxos":
 	case "epaxos":
 		c.Leaderless = true
 		c.Fast = false
@@ -129,6 +129,13 @@ func runSingleClient(c *config.Config, i int, verbose bool) {
 	server := c.Proxy.ProxyOf(c.ClientAddrs[c.Alias])
 	server = c.ReplicaAddrs[server]
 	cl := client.NewClientLog(server, c.MasterAddr, c.MasterPort, c.Fast, c.Leaderless, verbose, l)
+
+	// deterministically assign client IDs: clientN -> base (N-1)*(clones+1)+i
+	if strings.HasPrefix(strings.ToLower(c.Alias), "client") {
+		if num, err := strconv.Atoi(strings.TrimPrefix(strings.ToLower(c.Alias), "client")); err == nil && num > 0 {
+			cl.ClientId = int32((num-1)*(c.Clones+1) + i)
+		}
+	}
 	b := client.NewBufferClient(cl, c.Reqs, c.CommandSize, c.Conflicts, c.Writes, int64(c.Key))
 	if c.Pipeline {
 		b.Pipeline(c.Syncs, int32(c.Pendings))
@@ -138,12 +145,6 @@ func runSingleClient(c *config.Config, i int, verbose bool) {
 	}
 	if p := strings.ToLower(c.Protocol); p == "swiftpaxos" {
 		cl := swift.NewClient(b, len(c.ReplicaAddrs))
-		if cl == nil {
-			return
-		}
-		cl.Loop()
-	} else if p := strings.ToLower(c.Protocol); p == "ppaxos" {
-		cl := ppaxos.NewClient(b, len(c.ReplicaAddrs))
 		if cl == nil {
 			return
 		}

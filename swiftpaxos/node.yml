@@ -1,0 +1,27 @@
+master_nodes:
+  - name: "master"
+    ip: "57.182.103.74"
+
+replica_nodes:
+  - name: "replica1"
+    ip: "18.181.68.30"
+  - name: "replica2"
+    ip: "18.163.153.234"
+  - name: "replica3"
+    ip: "13.38.195.227"
+  #- name: "replica4"
+  #  ip: "18.190.104.138"
+  #- name: "replica5"
+  #  ip: "54.177.176.70"
+
+client_nodes:
+  - name: "client1"
+    ip: "54.95.19.6"
+  - name: "client2"
+    ip: "43.198.120.52"
+  - name: "client3"
+    ip: "35.181.164.114"
+  #- name: "client4"
+  #  ip: "3.148.136.238"
+  #- name: "client5"
+  #  ip: "54.219.65.127"

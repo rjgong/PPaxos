@@ -1,12 +1,12 @@
 """
 优先级分配优化程序
 
-给定一个5*5的距离矩阵，为每个节点分配唯一优先级，使得每个节点计算出的特定值的平均值最小。
+给定一个5*5的距离矩阵，为每个节点分配唯一优先级，使得每个节点计算出的特定值的总和最小。
 
 计算规则：
 1. 对于每个节点，首先选取所有优先级高于自己的节点的距离
 2. 如果优先级高的节点数量不足2个，从优先级低的节点中选取距离最短的节点补足2个
-3. 计算选取出来的距离的最大值
+3. 取选取出来的距离的最大值
 4. 目标是最小化所有节点这个最大值的总和
 """
 
@@ -23,7 +23,7 @@ def calculate_node_value(dist_matrix, node_idx, priorities):
     - priorities: 优先级数组，priorities[i]表示节点i的优先级（0是最高优先级）
     
     返回:
-    - 该节点的计算值（距离的平均值）
+    - 该节点的计算值（距离的最大值）
     """
     n = len(dist_matrix)
     current_priority = priorities[node_idx]
@@ -59,7 +59,7 @@ def calculate_node_value(dist_matrix, node_idx, priorities):
         for i in range(min(needed, len(lower_priority_nodes))):
             selected_distances.append(lower_priority_nodes[i][1])
     
-    # 返回距离的平均值
+    # 返回距离的最大值
     if selected_distances:
         return max(selected_distances)
     else:
@@ -172,4 +172,4 @@ def main():
             print("\n" + "="*50)
 
 if __name__ == "__main__":
-    main()
+    main() 

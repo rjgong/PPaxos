@@ -1,0 +1,943 @@
+✓ 找到满足条件的组合 #1: ['ap-southeast-4', 'ap-east-1', 'me-south-1', 'ca-west-1', 'us-east-1']
+
+延迟矩阵 (ms):
+               ap-southeast-4 ap-east-1      me-south-1     ca-west-1      us-east-1      
+ap-southeast-4             ---         141.24         200.79         194.80         214.36
+ap-east-1               141.24            ---         129.30         190.81         211.38
+me-south-1              200.79         129.30            ---         230.22         179.00
+ca-west-1               194.80         190.81         230.22            ---          59.66
+us-east-1               214.36         211.38         179.00          59.66            ---
+
+每个节点的分析:
+
+ap-southeast-4:
+  最远节点: us-east-1, 单程延迟: 214.36ms, 往返: 428.72ms
+  环路示例: ap-southeast-4->ap-east-1->me-south-1->ap-southeast-4 = 471.33ms
+  验证: 428.72 < 471.33 ✓
+
+ap-east-1:
+  最远节点: us-east-1, 单程延迟: 211.38ms, 往返: 422.77ms
+  环路示例: ap-east-1->ap-southeast-4->me-south-1->ap-east-1 = 471.33ms
+  验证: 422.77 < 471.33 ✓
+
+me-south-1:
+  最远节点: ca-west-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: me-south-1->ap-southeast-4->ap-east-1->me-south-1 = 471.33ms
+  验证: 460.44 < 471.33 ✓
+
+ca-west-1:
+  最远节点: me-south-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: ca-west-1->ap-southeast-4->ap-east-1->ca-west-1 = 526.85ms
+  验证: 460.44 < 526.85 ✓
+
+us-east-1:
+  最远节点: ap-southeast-4, 单程延迟: 214.36ms, 往返: 428.72ms
+  环路示例: us-east-1->ap-east-1->me-south-1->us-east-1 = 519.67ms
+  验证: 428.72 < 519.67 ✓
+
+✓ 找到满足条件的组合 #2: ['ap-southeast-4', 'ap-east-1', 'me-south-1', 'ca-west-1', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-4 ap-east-1      me-south-1     ca-west-1      mx-central-1   
+ap-southeast-4             ---         141.24         200.79         194.80         225.50
+ap-east-1               141.24            ---         129.30         190.81         216.38
+me-south-1              200.79         129.30            ---         230.22         233.31
+ca-west-1               194.80         190.81         230.22            ---          80.89
+mx-central-1            225.50         216.38         233.31          80.89            ---
+
+每个节点的分析:
+
+ap-southeast-4:
+  最远节点: mx-central-1, 单程延迟: 225.50ms, 往返: 450.99ms
+  环路示例: ap-southeast-4->ap-east-1->me-south-1->ap-southeast-4 = 471.33ms
+  验证: 450.99 < 471.33 ✓
+
+ap-east-1:
+  最远节点: mx-central-1, 单程延迟: 216.38ms, 往返: 432.76ms
+  环路示例: ap-east-1->ap-southeast-4->me-south-1->ap-east-1 = 471.33ms
+  验证: 432.76 < 471.33 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-4->ap-east-1->me-south-1 = 471.33ms
+  验证: 466.62 < 471.33 ✓
+
+ca-west-1:
+  最远节点: me-south-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: ca-west-1->ap-southeast-4->ap-east-1->ca-west-1 = 526.85ms
+  验证: 460.44 < 526.85 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-4->ap-east-1->mx-central-1 = 583.12ms
+  验证: 466.62 < 583.12 ✓
+进度: 82800/142506 (58.1%)
+
+✓ 找到满足条件的组合 #3: ['ap-southeast-4', 'ap-east-1', 'me-south-1', 'us-east-1', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-4 ap-east-1      me-south-1     us-east-1      mx-central-1   
+ap-southeast-4             ---         141.24         200.79         214.36         225.50
+ap-east-1               141.24            ---         129.30         211.38         216.38
+me-south-1              200.79         129.30            ---         179.00         233.31
+us-east-1               214.36         211.38         179.00            ---          61.97
+mx-central-1            225.50         216.38         233.31          61.97            ---
+
+每个节点的分析:
+
+ap-southeast-4:
+  最远节点: mx-central-1, 单程延迟: 225.50ms, 往返: 450.99ms
+  环路示例: ap-southeast-4->ap-east-1->me-south-1->ap-southeast-4 = 471.33ms
+  验证: 450.99 < 471.33 ✓
+
+ap-east-1:
+  最远节点: mx-central-1, 单程延迟: 216.38ms, 往返: 432.76ms
+  环路示例: ap-east-1->ap-southeast-4->me-south-1->ap-east-1 = 471.33ms
+  验证: 432.76 < 471.33 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-4->ap-east-1->me-south-1 = 471.33ms
+  验证: 466.62 < 471.33 ✓
+
+us-east-1:
+  最远节点: ap-southeast-4, 单程延迟: 214.36ms, 往返: 428.72ms
+  环路示例: us-east-1->ap-east-1->me-south-1->us-east-1 = 519.67ms
+  验证: 428.72 < 519.67 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-4->ap-east-1->mx-central-1 = 583.12ms
+  验证: 466.62 < 583.12 ✓
+
+
+
+
+✓ 找到满足条件的组合 #4: ['ap-southeast-4', 'ap-northeast-1', 'me-south-1', 'eu-south-1', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-4 ap-northeast-1 me-south-1     eu-south-1     mx-central-1   
+ap-southeast-4             ---         139.46         200.79         253.95         225.50
+ap-northeast-1          139.46            ---         176.59         218.41         170.08
+me-south-1              200.79         176.59            ---         116.00         233.31
+eu-south-1              253.95         218.41         116.00            ---         160.09
+mx-central-1            225.50         170.08         233.31         160.09            ---
+
+每个节点的分析:
+
+ap-southeast-4:
+  最远节点: eu-south-1, 单程延迟: 253.95ms, 往返: 507.91ms
+  环路示例: ap-southeast-4->ap-northeast-1->me-south-1->ap-southeast-4 = 516.85ms
+  验证: 507.91 < 516.85 ✓
+
+ap-northeast-1:
+  最远节点: eu-south-1, 单程延迟: 218.41ms, 往返: 436.81ms
+  环路示例: ap-northeast-1->ap-southeast-4->me-south-1->ap-northeast-1 = 516.86ms
+  验证: 436.81 < 516.86 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-4->ap-northeast-1->me-south-1 = 516.86ms
+  验证: 466.62 < 516.86 ✓
+
+eu-south-1:
+  最远节点: ap-southeast-4, 单程延迟: 253.95ms, 往返: 507.91ms
+  环路示例: eu-south-1->ap-northeast-1->me-south-1->eu-south-1 = 511.00ms
+  验证: 507.91 < 511.00 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-4->ap-northeast-1->mx-central-1 = 535.04ms
+  验证: 466.62 < 535.04 ✓
+
+✓ 找到满足条件的组合 #5: ['ap-southeast-4', 'ap-northeast-1', 'me-south-1', 'eu-south-2', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-4 ap-northeast-1 me-south-1     eu-south-2     mx-central-1   
+ap-southeast-4             ---         139.46         200.79         254.82         225.50
+ap-northeast-1          139.46            ---         176.59         222.59         170.08
+me-south-1              200.79         176.59            ---         128.84         233.31
+eu-south-2              254.82         222.59         128.84            ---         168.55
+mx-central-1            225.50         170.08         233.31         168.55            ---
+
+每个节点的分析:
+
+ap-southeast-4:
+  最远节点: eu-south-2, 单程延迟: 254.82ms, 往返: 509.64ms
+  环路示例: ap-southeast-4->ap-northeast-1->me-south-1->ap-southeast-4 = 516.85ms
+  验证: 509.64 < 516.85 ✓
+
+ap-northeast-1:
+  最远节点: eu-south-2, 单程延迟: 222.59ms, 往返: 445.19ms
+  环路示例: ap-northeast-1->ap-southeast-4->me-south-1->ap-northeast-1 = 516.86ms
+  验证: 445.19 < 516.86 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-4->ap-northeast-1->me-south-1 = 516.86ms
+  验证: 466.62 < 516.86 ✓
+
+eu-south-2:
+  最远节点: ap-southeast-4, 单程延迟: 254.82ms, 往返: 509.64ms
+  环路示例: eu-south-2->ap-northeast-1->me-south-1->eu-south-2 = 528.03ms
+  验证: 509.64 < 528.03 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-4->ap-northeast-1->mx-central-1 = 535.04ms
+  验证: 466.62 < 535.04 ✓
+
+
+
+
+
+✓ 找到满足条件的组合 #6: ['ap-southeast-4', 'me-south-1', 'ap-northeast-2', 'ca-west-1', 'eu-south-2']
+
+延迟矩阵 (ms):
+               ap-southeast-4 me-south-1     ap-northeast-2 ca-west-1      eu-south-2     
+ap-southeast-4             ---         200.79         156.86         194.80         254.82
+me-south-1              200.79            ---         167.82         230.22         128.84
+ap-northeast-2          156.86         167.82            ---         168.59         225.96
+ca-west-1               194.80         230.22         168.59            ---         164.32
+eu-south-2              254.82         128.84         225.96         164.32            ---
+
+每个节点的分析:
+
+ap-southeast-4:
+  最远节点: eu-south-2, 单程延迟: 254.82ms, 往返: 509.64ms
+  环路示例: ap-southeast-4->me-south-1->ap-northeast-2->ap-southeast-4 = 525.48ms
+  验证: 509.64 < 525.48 ✓
+
+me-south-1:
+  最远节点: ca-west-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: me-south-1->ap-southeast-4->ap-northeast-2->me-south-1 = 525.47ms
+  验证: 460.44 < 525.47 ✓
+
+ap-northeast-2:
+  最远节点: eu-south-2, 单程延迟: 225.96ms, 往返: 451.91ms
+  环路示例: ap-northeast-2->ap-southeast-4->me-south-1->ap-northeast-2 = 525.47ms
+  验证: 451.91 < 525.47 ✓
+
+ca-west-1:
+  最远节点: me-south-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: ca-west-1->ap-southeast-4->ap-northeast-2->ca-west-1 = 520.25ms
+  验证: 460.44 < 520.25 ✓
+
+eu-south-2:
+  最远节点: ap-southeast-4, 单程延迟: 254.82ms, 往返: 509.64ms
+  环路示例: eu-south-2->me-south-1->ap-northeast-2->eu-south-2 = 522.62ms
+  验证: 509.64 < 522.62 ✓
+进度: 87300/142506 (61.3%)
+
+✓ 找到满足条件的组合 #7: ['ap-southeast-4', 'me-south-1', 'ap-northeast-2', 'eu-south-1', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-4 me-south-1     ap-northeast-2 eu-south-1     mx-central-1   
+ap-southeast-4             ---         200.79         156.86         253.95         225.50
+me-south-1              200.79            ---         167.82         116.00         233.31
+ap-northeast-2          156.86         167.82            ---         235.53         199.76
+eu-south-1              253.95         116.00         235.53            ---         160.09
+mx-central-1            225.50         233.31         199.76         160.09            ---
+
+每个节点的分析:
+
+ap-southeast-4:
+  最远节点: eu-south-1, 单程延迟: 253.95ms, 往返: 507.91ms
+  环路示例: ap-southeast-4->me-south-1->ap-northeast-2->ap-southeast-4 = 525.48ms
+  验证: 507.91 < 525.48 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-4->ap-northeast-2->me-south-1 = 525.47ms
+  验证: 466.62 < 525.47 ✓
+
+ap-northeast-2:
+  最远节点: eu-south-1, 单程延迟: 235.53ms, 往返: 471.06ms
+  环路示例: ap-northeast-2->ap-southeast-4->me-south-1->ap-northeast-2 = 525.47ms
+  验证: 471.06 < 525.47 ✓
+
+eu-south-1:
+  最远节点: ap-southeast-4, 单程延迟: 253.95ms, 往返: 507.91ms
+  环路示例: eu-south-1->me-south-1->ap-northeast-2->eu-south-1 = 519.36ms
+  验证: 507.91 < 519.36 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-4->ap-northeast-2->mx-central-1 = 582.12ms
+  验证: 466.62 < 582.12 ✓
+
+✓ 找到满足条件的组合 #8: ['ap-southeast-4', 'me-south-1', 'ap-northeast-2', 'eu-south-2', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-4 me-south-1     ap-northeast-2 eu-south-2     mx-central-1   
+ap-southeast-4             ---         200.79         156.86         254.82         225.50
+me-south-1              200.79            ---         167.82         128.84         233.31
+ap-northeast-2          156.86         167.82            ---         225.96         199.76
+eu-south-2              254.82         128.84         225.96            ---         168.55
+mx-central-1            225.50         233.31         199.76         168.55            ---
+
+每个节点的分析:
+
+ap-southeast-4:
+  最远节点: eu-south-2, 单程延迟: 254.82ms, 往返: 509.64ms
+  环路示例: ap-southeast-4->me-south-1->ap-northeast-2->ap-southeast-4 = 525.48ms
+  验证: 509.64 < 525.48 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-4->ap-northeast-2->me-south-1 = 525.47ms
+  验证: 466.62 < 525.47 ✓
+
+ap-northeast-2:
+  最远节点: eu-south-2, 单程延迟: 225.96ms, 往返: 451.91ms
+  环路示例: ap-northeast-2->ap-southeast-4->me-south-1->ap-northeast-2 = 525.47ms
+  验证: 451.91 < 525.47 ✓
+
+eu-south-2:
+  最远节点: ap-southeast-4, 单程延迟: 254.82ms, 往返: 509.64ms
+  环路示例: eu-south-2->me-south-1->ap-northeast-2->eu-south-2 = 522.62ms
+  验证: 509.64 < 522.62 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-4->ap-northeast-2->mx-central-1 = 582.12ms
+  验证: 466.62 < 582.12 ✓
+
+✓ 找到满足条件的组合 #9: ['ap-southeast-4', 'me-south-1', 'ca-west-1', 'ap-east-2', 'eu-south-2']
+
+延迟矩阵 (ms):
+               ap-southeast-4 me-south-1     ca-west-1      ap-east-2      eu-south-2     
+ap-southeast-4             ---         200.79         194.80         165.92         254.82
+me-south-1              200.79            ---         230.22         164.15         128.84
+ca-west-1               194.80         230.22            ---         159.15         164.32
+ap-east-2               165.92         164.15         159.15            ---         217.07
+eu-south-2              254.82         128.84         164.32         217.07            ---
+
+每个节点的分析:
+
+ap-southeast-4:
+  最远节点: eu-south-2, 单程延迟: 254.82ms, 往返: 509.64ms
+  环路示例: ap-southeast-4->me-south-1->ca-west-1->ap-southeast-4 = 625.81ms
+  验证: 509.64 < 625.81 ✓
+
+me-south-1:
+  最远节点: ca-west-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: me-south-1->ap-southeast-4->ap-east-2->me-south-1 = 530.86ms
+  验证: 460.44 < 530.86 ✓
+
+ca-west-1:
+  最远节点: me-south-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: ca-west-1->ap-southeast-4->ap-east-2->ca-west-1 = 519.86ms
+  验证: 460.44 < 519.86 ✓
+
+ap-east-2:
+  最远节点: eu-south-2, 单程延迟: 217.07ms, 往返: 434.15ms
+  环路示例: ap-east-2->ap-southeast-4->me-south-1->ap-east-2 = 530.86ms
+  验证: 434.15 < 530.86 ✓
+
+eu-south-2:
+  最远节点: ap-southeast-4, 单程延迟: 254.82ms, 往返: 509.64ms
+  环路示例: eu-south-2->me-south-1->ca-west-1->eu-south-2 = 523.38ms
+  验证: 509.64 < 523.38 ✓
+进度: 87400/142506 (61.3%)
+
+✓ 找到满足条件的组合 #10: ['ap-southeast-4', 'me-south-1', 'ap-east-2', 'eu-south-2', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-4 me-south-1     ap-east-2      eu-south-2     mx-central-1   
+ap-southeast-4             ---         200.79         165.92         254.82         225.50
+me-south-1              200.79            ---         164.15         128.84         233.31
+ap-east-2               165.92         164.15            ---         217.07         198.56
+eu-south-2              254.82         128.84         217.07            ---         168.55
+mx-central-1            225.50         233.31         198.56         168.55            ---
+
+每个节点的分析:
+
+ap-southeast-4:
+  最远节点: eu-south-2, 单程延迟: 254.82ms, 往返: 509.64ms
+  环路示例: ap-southeast-4->me-south-1->ap-east-2->ap-southeast-4 = 530.86ms
+  验证: 509.64 < 530.86 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-4->ap-east-2->me-south-1 = 530.86ms
+  验证: 466.62 < 530.86 ✓
+
+ap-east-2:
+  最远节点: eu-south-2, 单程延迟: 217.07ms, 往返: 434.15ms
+  环路示例: ap-east-2->ap-southeast-4->me-south-1->ap-east-2 = 530.86ms
+  验证: 434.15 < 530.86 ✓
+
+eu-south-2:
+  最远节点: ap-southeast-4, 单程延迟: 254.82ms, 往返: 509.64ms
+  环路示例: eu-south-2->me-south-1->ap-east-2->eu-south-2 = 510.06ms
+  验证: 509.64 < 510.06 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-4->ap-east-2->mx-central-1 = 589.97ms
+  验证: 466.62 < 589.97 ✓
+
+
+
+
+✓ 找到满足条件的组合 #11: ['ap-southeast-2', 'ap-northeast-3', 'me-south-1', 'eu-south-1', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-2 ap-northeast-3 me-south-1     eu-south-1     mx-central-1   
+ap-southeast-2             ---         124.76         191.53         244.19         214.57
+ap-northeast-3          124.76            ---         172.12         228.03         172.47
+me-south-1              191.53         172.12            ---         116.00         233.31
+eu-south-1              244.19         228.03         116.00            ---         160.09
+mx-central-1            214.57         172.47         233.31         160.09            ---
+
+每个节点的分析:
+
+ap-southeast-2:
+  最远节点: eu-south-1, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例: ap-southeast-2->ap-northeast-3->me-south-1->ap-southeast-2 = 488.41ms
+  验证: 488.38 < 488.41 ✓
+
+ap-northeast-3:
+  最远节点: eu-south-1, 单程延迟: 228.03ms, 往返: 456.06ms
+  环路示例: ap-northeast-3->ap-southeast-2->me-south-1->ap-northeast-3 = 488.41ms
+  验证: 456.06 < 488.41 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-2->ap-northeast-3->me-south-1 = 488.41ms
+  验证: 466.62 < 488.41 ✓
+
+eu-south-1:
+  最远节点: ap-southeast-2, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例: eu-south-1->ap-northeast-3->me-south-1->eu-south-1 = 516.15ms
+  验证: 488.38 < 516.15 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-2->ap-northeast-3->mx-central-1 = 511.80ms
+  验证: 466.62 < 511.80 ✓
+
+
+
+
+
+✓ 找到满足条件的组合 #12: ['ap-southeast-2', 'me-south-1', 'ap-northeast-2', 'ca-west-1', 'eu-south-1']
+
+延迟矩阵 (ms):
+               ap-southeast-2 me-south-1     ap-northeast-2 ca-west-1      eu-south-1     
+ap-southeast-2             ---         191.53         147.42         184.41         244.19
+me-south-1              191.53            ---         167.82         230.22         116.00
+ap-northeast-2          147.42         167.82            ---         168.59         235.53
+ca-west-1               184.41         230.22         168.59            ---         155.99
+eu-south-1              244.19         116.00         235.53         155.99            ---
+
+每个节点的分析:
+
+ap-southeast-2:
+  最远节点: eu-south-1, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例: ap-southeast-2->me-south-1->ap-northeast-2->ap-southeast-2 = 506.77ms
+  验证: 488.38 < 506.77 ✓
+
+me-south-1:
+  最远节点: ca-west-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: me-south-1->ap-southeast-2->ap-northeast-2->me-south-1 = 506.77ms
+  验证: 460.44 < 506.77 ✓
+
+ap-northeast-2:
+  最远节点: eu-south-1, 单程延迟: 235.53ms, 往返: 471.06ms
+  环路示例: ap-northeast-2->ap-southeast-2->me-south-1->ap-northeast-2 = 506.77ms
+  验证: 471.06 < 506.77 ✓
+
+ca-west-1:
+  最远节点: me-south-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: ca-west-1->ap-southeast-2->ap-northeast-2->ca-west-1 = 500.42ms
+  验证: 460.44 < 500.42 ✓
+
+eu-south-1:
+  最远节点: ap-southeast-2, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例: eu-south-1->me-south-1->ap-northeast-2->eu-south-1 = 519.36ms
+  验证: 488.38 < 519.36 ✓
+
+✓ 找到满足条件的组合 #13: ['ap-southeast-2', 'me-south-1', 'ap-northeast-2', 'ca-west-1', 'eu-south-2']
+
+延迟矩阵 (ms):
+               ap-southeast-2 me-south-1     ap-northeast-2 ca-west-1      eu-south-2     
+ap-southeast-2             ---         191.53         147.42         184.41         246.98
+me-south-1              191.53            ---         167.82         230.22         128.84
+ap-northeast-2          147.42         167.82            ---         168.59         225.96
+ca-west-1               184.41         230.22         168.59            ---         164.32
+eu-south-2              246.98         128.84         225.96         164.32            ---
+
+每个节点的分析:
+
+ap-southeast-2:
+  最远节点: eu-south-2, 单程延迟: 246.98ms, 往返: 493.96ms
+  环路示例: ap-southeast-2->me-south-1->ap-northeast-2->ap-southeast-2 = 506.77ms
+  验证: 493.96 < 506.77 ✓
+
+me-south-1:
+  最远节点: ca-west-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: me-south-1->ap-southeast-2->ap-northeast-2->me-south-1 = 506.77ms
+  验证: 460.44 < 506.77 ✓
+
+ap-northeast-2:
+  最远节点: eu-south-2, 单程延迟: 225.96ms, 往返: 451.91ms
+  环路示例: ap-northeast-2->ap-southeast-2->me-south-1->ap-northeast-2 = 506.77ms
+  验证: 451.91 < 506.77 ✓
+
+ca-west-1:
+  最远节点: me-south-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: ca-west-1->ap-southeast-2->ap-northeast-2->ca-west-1 = 500.42ms
+  验证: 460.44 < 500.42 ✓
+
+eu-south-2:
+  最远节点: ap-southeast-2, 单程延迟: 246.98ms, 往返: 493.96ms
+  环路示例: eu-south-2->me-south-1->ap-northeast-2->eu-south-2 = 522.62ms
+  验证: 493.96 < 522.62 ✓
+
+✓ 找到满足条件的组合 #14: ['ap-southeast-2', 'me-south-1', 'ap-northeast-2', 'eu-south-1', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-2 me-south-1     ap-northeast-2 eu-south-1     mx-central-1   
+ap-southeast-2             ---         191.53         147.42         244.19         214.57
+me-south-1              191.53            ---         167.82         116.00         233.31
+ap-northeast-2          147.42         167.82            ---         235.53         199.76
+eu-south-1              244.19         116.00         235.53            ---         160.09
+mx-central-1            214.57         233.31         199.76         160.09            ---
+
+每个节点的分析:
+
+ap-southeast-2:
+  最远节点: eu-south-1, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例: ap-southeast-2->me-south-1->ap-northeast-2->ap-southeast-2 = 506.77ms
+  验证: 488.38 < 506.77 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-2->ap-northeast-2->me-south-1 = 506.77ms
+  验证: 466.62 < 506.77 ✓
+
+ap-northeast-2:
+  最远节点: eu-south-1, 单程延迟: 235.53ms, 往返: 471.06ms
+  环路示例: ap-northeast-2->ap-southeast-2->me-south-1->ap-northeast-2 = 506.77ms
+  验证: 471.06 < 506.77 ✓
+
+eu-south-1:
+  最远节点: ap-southeast-2, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例: eu-south-1->me-south-1->ap-northeast-2->eu-south-1 = 519.36ms
+  验证: 488.38 < 519.36 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-2->ap-northeast-2->mx-central-1 = 561.75ms
+  验证: 466.62 < 561.75 ✓
+
+✓ 找到满足条件的组合 #15: ['ap-southeast-2', 'me-south-1', 'ap-northeast-2', 'eu-south-2', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-2 me-south-1     ap-northeast-2 eu-south-2     mx-central-1   
+ap-southeast-2             ---         191.53         147.42         246.98         214.57
+me-south-1              191.53            ---         167.82         128.84         233.31
+ap-northeast-2          147.42         167.82            ---         225.96         199.76
+eu-south-2              246.98         128.84         225.96            ---         168.55
+mx-central-1            214.57         233.31         199.76         168.55            ---
+
+每个节点的分析:
+
+ap-southeast-2:
+  最远节点: eu-south-2, 单程延迟: 246.98ms, 往返: 493.96ms
+  环路示例: ap-southeast-2->me-south-1->ap-northeast-2->ap-southeast-2 = 506.77ms
+  验证: 493.96 < 506.77 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-2->ap-northeast-2->me-south-1 = 506.77ms
+  验证: 466.62 < 506.77 ✓
+
+ap-northeast-2:
+  最远节点: eu-south-2, 单程延迟: 225.96ms, 往返: 451.91ms
+  环路示例: ap-northeast-2->ap-southeast-2->me-south-1->ap-northeast-2 = 506.77ms
+  验证: 451.91 < 506.77 ✓
+
+eu-south-2:
+  最远节点: ap-southeast-2, 单程延迟: 246.98ms, 往返: 493.96ms
+  环路示例: eu-south-2->me-south-1->ap-northeast-2->eu-south-2 = 522.62ms
+  验证: 493.96 < 522.62 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-2->ap-northeast-2->mx-central-1 = 561.75ms
+  验证: 466.62 < 561.75 ✓
+
+✓ 找到满足条件的组合 #16: ['ap-southeast-2', 'me-south-1', 'ca-west-1', 'ap-east-2', 'eu-south-1']
+
+延迟矩阵 (ms):
+               ap-southeast-2 me-south-1     ca-west-1      ap-east-2      eu-south-1     
+ap-southeast-2             ---         191.53         184.41         152.56         244.19
+me-south-1              191.53            ---         230.22         164.15         116.00
+ca-west-1               184.41         230.22            ---         159.15         155.99
+ap-east-2               152.56         164.15         159.15            ---         217.79
+eu-south-1              244.19         116.00         155.99         217.79            ---
+
+每个节点的分析:
+
+ap-southeast-2:
+  最远节点: eu-south-1, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例: ap-southeast-2->me-south-1->ca-west-1->ap-southeast-2 = 606.16ms
+  验证: 488.38 < 606.16 ✓
+
+me-south-1:
+  最远节点: ca-west-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: me-south-1->ap-southeast-2->ap-east-2->me-south-1 = 508.24ms
+  验证: 460.44 < 508.24 ✓
+
+ca-west-1:
+  最远节点: me-south-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: ca-west-1->ap-southeast-2->ap-east-2->ca-west-1 = 496.12ms
+  验证: 460.44 < 496.12 ✓
+
+ap-east-2:
+  最远节点: eu-south-1, 单程延迟: 217.79ms, 往返: 435.57ms
+  环路示例: ap-east-2->ap-southeast-2->me-south-1->ap-east-2 = 508.24ms
+  验证: 435.57 < 508.24 ✓
+
+eu-south-1:
+  最远节点: ap-southeast-2, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例: eu-south-1->me-south-1->ca-west-1->eu-south-1 = 502.22ms
+  验证: 488.38 < 502.22 ✓
+
+✓ 找到满足条件的组合 #17: ['ap-southeast-2', 'me-south-1', 'ca-west-1', 'ap-east-2', 'eu-south-2']
+
+延迟矩阵 (ms):
+               ap-southeast-2 me-south-1     ca-west-1      ap-east-2      eu-south-2     
+ap-southeast-2             ---         191.53         184.41         152.56         246.98
+me-south-1              191.53            ---         230.22         164.15         128.84
+ca-west-1               184.41         230.22            ---         159.15         164.32
+ap-east-2               152.56         164.15         159.15            ---         217.07
+eu-south-2              246.98         128.84         164.32         217.07            ---
+
+每个节点的分析:
+
+ap-southeast-2:
+  最远节点: eu-south-2, 单程延迟: 246.98ms, 往返: 493.96ms
+  环路示例: ap-southeast-2->me-south-1->ca-west-1->ap-southeast-2 = 606.16ms
+  验证: 493.96 < 606.16 ✓
+
+me-south-1:
+  最远节点: ca-west-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: me-south-1->ap-southeast-2->ap-east-2->me-south-1 = 508.24ms
+  验证: 460.44 < 508.24 ✓
+
+ca-west-1:
+  最远节点: me-south-1, 单程延迟: 230.22ms, 往返: 460.44ms
+  环路示例: ca-west-1->ap-southeast-2->ap-east-2->ca-west-1 = 496.12ms
+  验证: 460.44 < 496.12 ✓
+
+ap-east-2:
+  最远节点: eu-south-2, 单程延迟: 217.07ms, 往返: 434.15ms
+  环路示例: ap-east-2->ap-southeast-2->me-south-1->ap-east-2 = 508.24ms
+  验证: 434.15 < 508.24 ✓
+
+eu-south-2:
+  最远节点: ap-southeast-2, 单程延迟: 246.98ms, 往返: 493.96ms
+  环路示例: eu-south-2->me-south-1->ca-west-1->eu-south-2 = 523.38ms
+  验证: 493.96 < 523.38 ✓
+进度: 98000/142506 (68.8%)
+
+✓ 找到满足条件的组合 #18: ['ap-southeast-2', 'me-south-1', 'ap-east-2', 'eu-south-1', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-2 me-south-1     ap-east-2      eu-south-1     mx-central-1   
+ap-southeast-2             ---         191.53         152.56         244.19         214.57
+me-south-1              191.53            ---         164.15         116.00         233.31
+ap-east-2               152.56         164.15            ---         217.79         198.56
+eu-south-1              244.19         116.00         217.79            ---         160.09
+mx-central-1            214.57         233.31         198.56         160.09            ---
+
+每个节点的分析:
+
+ap-southeast-2:
+  最远节点: eu-south-1, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例: ap-southeast-2->me-south-1->ap-east-2->ap-southeast-2 = 508.24ms
+  验证: 488.38 < 508.24 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-2->ap-east-2->me-south-1 = 508.24ms
+  验证: 466.62 < 508.24 ✓
+
+ap-east-2:
+  最远节点: eu-south-1, 单程延迟: 217.79ms, 往返: 435.57ms
+  环路示例: ap-east-2->ap-southeast-2->me-south-1->ap-east-2 = 508.24ms
+  验证: 435.57 < 508.24 ✓
+
+eu-south-1:
+  最远节点: ap-southeast-2, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例: eu-south-1->me-south-1->ap-east-2->eu-south-1 = 497.94ms
+  验证: 488.38 < 497.94 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-2->ap-east-2->mx-central-1 = 565.68ms
+  验证: 466.62 < 565.68 ✓
+
+✓ 找到满足条件的组合 #19: ['ap-southeast-2', 'me-south-1', 'ap-east-2', 'eu-south-2', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-southeast-2 me-south-1     ap-east-2      eu-south-2     mx-central-1   
+ap-southeast-2             ---         191.53         152.56         246.98         214.57
+me-south-1              191.53            ---         164.15         128.84         233.31
+ap-east-2               152.56         164.15            ---         217.07         198.56
+eu-south-2              246.98         128.84         217.07            ---         168.55
+mx-central-1            214.57         233.31         198.56         168.55            ---
+
+每个节点的分析:
+
+ap-southeast-2:
+  最远节点: eu-south-2, 单程延迟: 246.98ms, 往返: 493.96ms
+  环路示例: ap-southeast-2->me-south-1->ap-east-2->ap-southeast-2 = 508.24ms
+  验证: 493.96 < 508.24 ✓
+
+me-south-1:
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-2->ap-east-2->me-south-1 = 508.24ms
+  验证: 466.62 < 508.24 ✓
+
+ap-east-2:
+  最远节点: eu-south-2, 单程延迟: 217.07ms, 往返: 434.15ms
+  环路示例: ap-east-2->ap-southeast-2->me-south-1->ap-east-2 = 508.24ms
+  验证: 434.15 < 508.24 ✓
+
+eu-south-2:
+  最远节点: ap-southeast-2, 单程延迟: 246.98ms, 往返: 493.96ms
+  环路示例: eu-south-2->me-south-1->ap-east-2->eu-south-2 = 510.06ms
+  验证: 493.96 < 510.06 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-southeast-2->ap-east-2->mx-central-1 = 565.68ms
+  验证: 466.62 < 565.68 ✓
+
+
+
+
+✓ 找到满足条件的组合 #20: ['ap-northeast-1', 'me-south-1', 'il-central-1', 'sa-east-1', 'mx-central-1']
+
+延迟矩阵 (ms):
+               ap-northeast-1 me-south-1     il-central-1   sa-east-1      mx-central-1   
+ap-northeast-1             ---         176.59         280.66         263.19         170.08
+me-south-1              176.59            ---         155.70         287.65         233.31
+il-central-1            280.66         155.70            ---         251.86         197.44
+sa-east-1               263.19         287.65         251.86            ---         173.42
+mx-central-1            170.08         233.31         197.44         173.42            ---
+
+每个节点的分析:
+
+ap-northeast-1:
+  最远节点: il-central-1, 单程延迟: 280.66ms, 往返: 561.32ms
+  环路示例: ap-northeast-1->me-south-1->sa-east-1->ap-northeast-1 = 727.43ms
+  验证: 561.32 < 727.43 ✓
+
+me-south-1:
+  最远节点: sa-east-1, 单程延迟: 287.65ms, 往返: 575.30ms
+  环路示例: me-south-1->ap-northeast-1->il-central-1->me-south-1 = 612.96ms
+  验证: 575.30 < 612.96 ✓
+
+il-central-1:
+  最远节点: ap-northeast-1, 单程延迟: 280.66ms, 往返: 561.32ms
+  环路示例: il-central-1->me-south-1->sa-east-1->il-central-1 = 695.21ms
+  验证: 561.32 < 695.21 ✓
+
+sa-east-1:
+  最远节点: me-south-1, 单程延迟: 287.65ms, 往返: 575.30ms
+  环路示例: sa-east-1->ap-northeast-1->il-central-1->sa-east-1 = 795.70ms
+  验证: 575.30 < 795.70 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->ap-northeast-1->il-central-1->mx-central-1 = 648.17ms
+  验证: 466.62 < 648.17 ✓
+
+
+
+
+
+✓ 找到满足条件的组合 #21: ['me-south-1', 'il-central-1', 'ap-east-2', 'sa-east-1', 'mx-central-1']
+
+延迟矩阵 (ms):
+               me-south-1     il-central-1   ap-east-2      sa-east-1      mx-central-1   
+me-south-1                 ---         155.70         164.15         287.65         233.31
+il-central-1            155.70            ---         279.46         251.86         197.44
+ap-east-2               164.15         279.46            ---         288.57         198.56
+sa-east-1               287.65         251.86         288.57            ---         173.42
+mx-central-1            233.31         197.44         198.56         173.42            ---
+
+每个节点的分析:
+
+me-south-1:
+  最远节点: sa-east-1, 单程延迟: 287.65ms, 往返: 575.30ms
+  环路示例: me-south-1->il-central-1->ap-east-2->me-south-1 = 599.32ms
+  验证: 575.30 < 599.32 ✓
+
+il-central-1:
+  最远节点: ap-east-2, 单程延迟: 279.46ms, 往返: 558.93ms
+  环路示例: il-central-1->me-south-1->sa-east-1->il-central-1 = 695.21ms
+  验证: 558.93 < 695.21 ✓
+
+ap-east-2:
+  最远节点: sa-east-1, 单程延迟: 288.57ms, 往返: 577.14ms
+  环路示例: ap-east-2->me-south-1->il-central-1->ap-east-2 = 599.32ms
+  验证: 577.14 < 599.32 ✓
+
+sa-east-1:
+  最远节点: ap-east-2, 单程延迟: 288.57ms, 往返: 577.14ms
+  环路示例: sa-east-1->me-south-1->il-central-1->sa-east-1 = 695.21ms
+  验证: 577.14 < 695.21 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: mx-central-1->il-central-1->ap-east-2->mx-central-1 = 675.45ms\
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ✓ 找到满足条件的组合 #1: ['ap-southeast-2', 'me-south-1', 'ap-northeast-2', 'eu-south-1', 'mx-central-1']
+   Leader: me-south-1
+
+延迟矩阵 (ms):
+               ap-southeast-2 me-south-1(L)  ap-northeast-2 eu-south-1     mx-central-1   
+ap-southeast-2             ---         191.53         147.42         244.19         214.57
+me-south-1(L)           191.53            ---         167.82         116.00         233.31
+ap-northeast-2          147.42         167.82            ---         235.53         199.76
+eu-south-1              244.19         116.00         235.53            ---         160.09
+mx-central-1            214.57         233.31         199.76         160.09            ---
+
+Leader选举结果:
+  me-south-1: 总延迟 = 708.66ms ← Leader
+  ap-northeast-2: 总延迟 = 750.53ms
+  eu-south-1: 总延迟 = 755.82ms
+
+每个节点的验证:
+
+ap-southeast-2:
+  最远节点: eu-south-1, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例(含Leader): ap-southeast-2->me-south-1->ap-northeast-2->ap-southeast-2 = 506.77ms
+  验证: 488.38 < 506.77 ✓
+
+me-south-1 (Leader):
+  最远节点: mx-central-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例: me-south-1->ap-southeast-2->ap-northeast-2->me-south-1 = 506.77ms
+  验证: 466.62 < 506.77 ✓
+
+ap-northeast-2:
+  最远节点: eu-south-1, 单程延迟: 235.53ms, 往返: 471.06ms
+  环路示例(含Leader): ap-northeast-2->me-south-1->ap-southeast-2->ap-northeast-2 = 506.77ms
+  验证: 471.06 < 506.77 ✓
+
+eu-south-1:
+  最远节点: ap-southeast-2, 单程延迟: 244.19ms, 往返: 488.38ms
+  环路示例(含Leader): eu-south-1->me-south-1->ap-northeast-2->eu-south-1 = 519.36ms
+  验证: 488.38 < 519.36 ✓
+
+mx-central-1:
+  最远节点: me-south-1, 单程延迟: 233.31ms, 往返: 466.62ms
+  环路示例(含Leader): mx-central-1->me-south-1->ap-southeast-2->mx-central-1 = 639.41ms
+
+
+
+
+
+
+
+
+
+
+
+
+  ✓ 找到满足条件的组合 #1: ['il-central-1', 'ca-central-1', 'me-south-1', 'eu-west-3', 'ca-west-1']
+   Leader: ca-central-1
+   方法1平均延迟: 245.14ms
+   方法2平均延迟: 320.23ms
+   比值(Method1/Method2): 0.77
+   节点级别值(方法1 vs 方法2):
+     il-central-1: 256.82ms  |  356.21ms
+     ca-central-1: 218.06ms  |  218.06ms
+     me-south-1: 218.06ms  |  321.74ms
+     eu-west-3: 213.26ms  |  321.74ms
+     ca-west-1: 319.49ms  |  383.39ms
+
+延迟矩阵 (ms):
+               il-central-1   ca-central-1(L)me-south-1     eu-west-3      ca-west-1      
+il-central-1               ---         125.07         128.41         124.50         159.75
+ca-central-1(L)         125.07            ---         109.03         106.63         131.21
+me-south-1              128.41         109.03            ---         106.08         144.70
+eu-west-3               124.50         106.63         106.08            ---         145.55
+ca-west-1               159.75         131.21         144.70         145.55            ---
+
+Leader选举结果:
+  ca-central-1: 总延迟 = 471.95ms ← Leader
+  eu-west-3: 总延迟 = 482.77ms
+  me-south-1: 总延迟 = 488.22ms
+
+组合整体验证：
+  ✓ 方法1/方法2 = 0.77 < 0.8，符合要求
+
+
+
+
+
+
+
+
+  ✓ 找到满足条件的组合 #11: ['ap-southeast-2', 'ap-northeast-2', 'ap-south-2', 'us-west-2', 'eu-central-2']
+   Leader: us-west-2
+   方法1平均延迟: 347.34ms
+   方法2平均延迟: 413.35ms
+   比值(Method1/Method2): 0.840
+   节点级别值(方法1 vs 方法2):
+     ap-southeast-2: 286.27ms  |  408.65ms
+     ap-northeast-2: 247.72ms  |  408.65ms
+     ap-south-2: 421.16ms  |  453.27ms
+     us-west-2: 286.27ms  |  286.27ms
+     eu-central-2: 495.27ms  |  509.91ms
+
+延迟矩阵 (ms):
+               ap-southeast-2 ap-northeast-2 ap-south-2     us-west-2(L)   eu-central-2   
+ap-southeast-2             ---         141.66         141.97         143.13         247.63
+ap-northeast-2          141.66            ---         118.84         123.86         245.43
+ap-south-2              141.97         118.84            ---         210.58         152.91
+us-west-2(L)            143.13         123.86         210.58            ---         146.43
+eu-central-2            247.63         245.43         152.91         146.43            ---
+
+Leader选举结果:
+  us-west-2: 总延迟 = 624.00ms ← Leader
+  ap-south-2: 总延迟 = 624.29ms
+  ap-northeast-2: 总延迟 = 629.78ms
+
+组合整体验证：
+  ✓ 方法1/方法2 = 0.840 < 0.8，符合要求

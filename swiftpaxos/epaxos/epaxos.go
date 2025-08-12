@@ -661,6 +661,7 @@ func (r *Replica) updateAttributes(cmds []state.Command, seq int32, deps []int32
 		if r.Id != replica && int32(q) == replica {
 			continue
 		}
+		r.PrintDebug("q", q, "r.N", r.N)
 		for i := 0; i < len(cmds); i++ {
 			if dpair, present := (r.conflicts[q])[cmds[i].K]; present {
 				r.PrintDebug("updateAttributes q", q, "replica", replica, "instance", instance, "seq", seq, "cmds", i, "key", cmds[i].K, "dpair.last", dpair.last, "dpair.lastWrite", dpair.lastWrite)
@@ -876,7 +877,7 @@ func (r *Replica) handlePreAcceptReply(pareply *PreAcceptReply) {
 	}
 
 	inst.lb.preAcceptOKs++
-
+	r.Printf("pareply.VBallot: %d\n", pareply.VBallot)
 	if pareply.VBallot > lb.ballot {
 		lb.ballot = pareply.VBallot
 		lb.seq = pareply.Seq

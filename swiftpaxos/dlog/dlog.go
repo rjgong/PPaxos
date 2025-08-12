@@ -8,9 +8,9 @@ import (
 var DLOG = true
 
 func Printf(format string, v ...any) {
-	if DLOG {
-		log.Printf(format, v...)
-	}
+
+	log.Printf(format, v...)
+
 }
 
 func Println(v ...any) {
@@ -62,15 +62,15 @@ func (l *Logger) PrintDebug(v ...any) {
 }
 
 func (l *Logger) Printf(format string, v ...any) {
-	if DLOG {
-		if l == nil {
-			log.Println(v...)
-		} else {
-			if l.verbose {
-				l.logger.Println(v...)
-			}
+
+	if l == nil {
+		log.Printf(format, v...)
+	} else {
+		if l.verbose {
+			l.logger.Printf(format, v...)
 		}
 	}
+
 }
 
 func (l *Logger) Fatal(v ...any) {

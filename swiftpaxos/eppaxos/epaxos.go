@@ -6,6 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"fmt"
+	// 提供并发安全的 map，用来保存 instanceDesc
+	cmap "github.com/orcaman/concurrent-map"
+
 	"github.com/imdea-software/swiftpaxos/config"
 	"github.com/imdea-software/swiftpaxos/dlog"
 	"github.com/imdea-software/swiftpaxos/replica"
@@ -33,6 +37,112 @@ const BF_K = 4
 const BF_M_N = 32.0
 
 const HT_INIT_SIZE = 200000
+
+// utility to build map key from replica+instance
+func instKey(replica, instance int32) string {
+	return fmt.Sprintf("%d.%d", replica, instance)
+}
+
+// allocate a new instDesc from pool
+func (r *Replica) allocDesc() *instDesc {
+	d := r.descPool.Get().(*instDesc)
+	if d.msgs == nil {
+		d.msgs = make(chan interface{}, 8)
+	}
+	if d.stopChan == nil {
+		d.stopChan = make(chan *sync.WaitGroup, 4)
+	}
+	d.active = true
+	d.seq = false
+	return d
+}
+
+// free descriptor back to pool
+func (r *Replica) freeDesc(d *instDesc) {
+	select {
+	case <-d.msgs:
+	default:
+	}
+	r.descPool.Put(d)
+}
+
+// get or create descriptor, possibly start goroutine, and deliver message
+func (r *Replica) getInstDescSeq(replica, instance int32, msg interface{}, seq bool) *instDesc {
+	key := instKey(replica, instance)
+	var d *instDesc
+
+	r.cmdDescs.Upsert(key, nil, func(exists bool, v, _ interface{}) interface{} {
+		if exists {
+			d = v.(*instDesc)
+			return d
+		}
+		d = r.allocDesc()
+		d.id = instanceId{replica, instance}
+		if replica < int32(len(r.InstanceSpace)) && instance < int32(len(r.InstanceSpace[replica])) {
+			d.inst = r.InstanceSpace[replica][instance]
+		}
+		d.seq = seq || (r.routineCount >= MaxDescRoutines)
+		if !d.seq {
+			go r.handleInstDesc(d)
+			r.routineCount++
+		}
+		return d
+	})
+
+	if msg != nil {
+		if d.seq {
+			r.handleInstMsg(msg, d)
+		} else {
+			d.msgs <- msg
+		}
+	}
+	return d
+}
+
+// goroutine main loop
+func (r *Replica) handleInstDesc(d *instDesc) {
+	for d.active {
+		select {
+		case wg := <-d.stopChan:
+			d.active = false
+			wg.Done()
+			r.freeDesc(d)
+			return
+		case m := <-d.msgs:
+			// log each message processed by this instance goroutine
+			r.handleInstMsg(m, d)
+		}
+	}
+	r.freeDesc(d)
+}
+
+// dispatch message to existing EPaxos handlers
+func (r *Replica) handleInstMsg(m interface{}, d *instDesc) {
+	switch msg := m.(type) {
+	case *Prepare:
+		r.handlePrepare(msg)
+	case *PreAccept:
+		r.handlePreAccept(msg)
+	case *Accept:
+		r.handleAccept(msg)
+	case *Commit:
+		r.handleCommit(msg)
+	case *PreAcceptReply:
+		r.handlePreAcceptReply(msg)
+	case *AcceptReply:
+		r.handleAcceptReply(msg)
+	case *PrepareReply:
+		r.handlePrepareReply(msg)
+	case *TryPreAccept:
+		r.handleTryPreAccept(msg)
+	case *TryPreAcceptReply:
+		r.handleTryPreAcceptReply(msg)
+	case string:
+		if msg == "deliver" {
+			r.deliverInstance(d)
+		}
+	}
+}
 
 // main differences with the original code base
 // - fix N=3 case
@@ -91,6 +201,20 @@ type Replica struct {
 	maxRecvBallot int32
 	batchWait     int
 	transconf     bool
+
+	// ---------------- 以下为并发 instance 管理新增字段 ----------------
+	// 保存 (replica,instance) -> *instDesc 的并发安全表，负责路由消息到对应 goroutine。
+	cmdDescs cmap.ConcurrentMap
+	// 已经执行过的实例集合，避免重复执行。
+	delivered cmap.ConcurrentMap
+	// 用于在依赖全部满足后异步触发后继 instance 的执行。
+	deliverChan chan *instanceId
+	// 当前活跃的 instance goroutine 数，用于限流。
+	routineCount int32
+	// 对 instDesc 进行复用，减少 GC 压力。
+	descPool    sync.Pool
+	conflictMu  sync.RWMutex
+	committedMu sync.RWMutex
 }
 
 type InstPair struct {
@@ -126,6 +250,33 @@ type Instance struct {
 type instanceId struct {
 	replica  int32
 	instance int32
+}
+
+// ------------------- goroutine-based instance descriptor -------------------
+// instDesc holds runtime data for an EPaxos instance when we migrate to the
+// per-instance goroutine model (inspired by swift). Each descriptor handles
+// all protocol messages that belong to that (replica, instance) pair.
+// The fields are intentionally minimal for the first migration step and can
+// be extended (e.g., successors list, message sets) when we port more logic.
+const MaxDescRoutines = 4096 // upper bound of concurrently running instance goroutines
+
+type instDesc struct {
+	// immutable identity
+	id instanceId
+
+	// pointer to the authoritative Instance struct stored in r.InstanceSpace
+	inst *Instance
+
+	// per-instance inbox; all protocol messages will be delivered here
+	msgs chan interface{}
+
+	// allows external code to gracefully stop this goroutine; each element is
+	// a *sync.WaitGroup that will be Done() just before the goroutine exits.
+	stopChan chan *sync.WaitGroup
+
+	// liveness & scheduling helpers
+	active bool // set to false when the goroutine should terminate
+	seq    bool // true ⇒ run in caller thread instead of separate goroutine
 }
 
 type LeaderBookkeeping struct {
@@ -183,6 +334,18 @@ func New(alias string, id int, peerAddrList []string, exec, beacon, durable bool
 		-1,
 		batchWait,
 		transconf,
+		// 初始化并发容器
+		cmap.New(),
+		cmap.New(),
+		make(chan *instanceId, defs.CHAN_BUFFER_SIZE),
+		0,
+		sync.Pool{
+			New: func() interface{} {
+				return &instDesc{}
+			},
+		},
+		sync.RWMutex{},
+		sync.RWMutex{},
 	}
 
 	r.Beacon = beacon
@@ -305,9 +468,9 @@ func (r *Replica) run() {
 
 	r.ComputeClosestPeers()
 
-	if r.Exec {
-		go r.executeCommands()
-	}
+	//if r.Exec {
+	//	go r.executeCommands()
+	//}
 
 	//slowClockChan = make(chan bool, 1)
 	//fastClockChan = make(chan bool, 1)
@@ -344,7 +507,8 @@ func (r *Replica) run() {
 
 		case preAcceptS := <-r.preAcceptChan:
 			preAccept := preAcceptS.(*PreAccept)
-			r.handlePreAccept(preAccept)
+			//r.handlePreAccept(preAccept)
+			r.getInstDescSeq(preAccept.Replica, preAccept.Instance, preAccept, false)
 
 		case acceptS := <-r.acceptChan:
 			accept := acceptS.(*Accept)
@@ -359,7 +523,7 @@ func (r *Replica) run() {
 			r.handlePrepareReply(prepareReply)
 
 		case preAcceptReplyS := <-r.preAcceptReplyChan:
-			r.PrintDebug("received time", time.Now(), "time since recv", time.Since(preAcceptReplyS.(*PreAcceptReply).RecvTs))
+			//r.PrintDebug("received time", time.Now(), "time since recv", time.Since(preAcceptReplyS.(*PreAcceptReply).RecvTs))
 			preAcceptReply := preAcceptReplyS.(*PreAcceptReply)
 			r.handlePreAcceptReply(preAcceptReply)
 
@@ -391,103 +555,71 @@ func (r *Replica) run() {
 
 		case iid := <-r.instancesToRecover:
 			r.startRecoveryForInstance(iid.replica, iid.instance)
+
+		case iid := <-r.deliverChan:
+			// route deliver trigger
+			r.getInstDescSeq(iid.replica, iid.instance, "deliver", false)
 		}
 	}
 }
 
-func (r *Replica) executeCommands() {
-	r.PrintDebug("executeCommands")
-	const SLEEP_TIME_NS = 1e6
-	problemInstance := make([]int32, r.N)
-	timeout := make([]uint64, r.N)
-	for q := 0; q < r.N; q++ {
-		problemInstance[q] = -1
-		timeout[q] = 0
-	}
+/*
+	func (r *Replica) executeCommands() {
+		r.PrintDebug("executeCommands")
+		const SLEEP_TIME_NS = 1e6
+		problemInstance := make([]int32, r.N)
+		timeout := make([]uint64, r.N)
+		for q := 0; q < r.N; q++ {
+			problemInstance[q] = -1
+			timeout[q] = 0
+		}
 
-	for !r.Shutdown {
-		executed := false
-		for q := int32(0); q < int32(r.N); q++ {
-			for inst := r.ExecedUpTo[q] + 1; inst <= r.crtInstance[q]; inst++ {
+		for !r.Shutdown {
+			executed := false
+			for q := int32(0); q < int32(r.N); q++ {
+				for inst := r.ExecedUpTo[q] + 1; inst <= r.crtInstance[q]; inst++ {
 
-				if r.InstanceSpace[q][inst] != nil && r.InstanceSpace[q][inst].Status == EXECUTED {
-					if inst == r.ExecedUpTo[q]+1 {
-						r.ExecedUpTo[q] = inst
-					}
-					/*deps := r.InstanceSpace[q][inst].Deps
-					for p := 0; p < r.N; p++ {
-						for j := deps[p] + 1; j <= r.crtInstance[p]; j++ {
-							if r.InstanceSpace[p][j] == nil || r.InstanceSpace[p][j].Deps == nil || r.InstanceSpace[p][j].Status >= COMMITTED {
-								continue
-							}
-							//r.PrintDebug("executeCommands2", "replica", p, "instance", j, "r.InstanceSpace[p][j].Deps[q]", r.InstanceSpace[p][j].Deps[q])
-							if r.InstanceSpace[p][j].Deps[q] == inst {
-								r.PrintDebug("handlePreAcceptReply", "replica", p, "instance", j, "deps", deps[p], "crtInstance", r.crtInstance[p])
-								r.handlePreAcceptReply(&PreAcceptReply{
-									Replica:       int32(p),
-									Instance:      j,
-									Deps:          r.InstanceSpace[p][j].Deps,
-									CommittedDeps: r.CommittedUpTo,
-									reach:         r.InstanceSpace[p][j].reach,
-								})
-							}
+					if r.InstanceSpace[q][inst] != nil && r.InstanceSpace[q][inst].Status == EXECUTED {
+						if inst == r.ExecedUpTo[q]+1 {
+							r.ExecedUpTo[q] = inst
 						}
-					}*/
-					continue
-				}
-				if r.InstanceSpace[q][inst] == nil || r.InstanceSpace[q][inst].Status < COMMITTED || r.InstanceSpace[q][inst].Cmds == nil {
-					if inst == problemInstance[q] {
-						timeout[q] += SLEEP_TIME_NS
-						if timeout[q] >= COMMIT_GRACE_PERIOD {
-							//for k := problemInstance[q]; k <= r.crtInstance[q]; k++ {
-							//r.instancesToRecover <- &instanceId{q, k}
-							//}
+
+						continue
+					}
+					if r.InstanceSpace[q][inst] == nil || r.InstanceSpace[q][inst].Status < COMMITTED || r.InstanceSpace[q][inst].Cmds == nil {
+						if inst == problemInstance[q] {
+							timeout[q] += SLEEP_TIME_NS
+							if timeout[q] >= COMMIT_GRACE_PERIOD {
+								//for k := problemInstance[q]; k <= r.crtInstance[q]; k++ {
+								//r.instancesToRecover <- &instanceId{q, k}
+								//}
+								timeout[q] = 0
+							}
+						} else {
+							problemInstance[q] = inst
 							timeout[q] = 0
 						}
-					} else {
-						problemInstance[q] = inst
-						timeout[q] = 0
+						break
 					}
-					break
-				}
-				if ok := r.exec.executeCommand(int32(q), inst); ok {
-					r.PrintDebug("successfully executed instance", inst, "replica", q)
-					executed = true
-					if inst == r.ExecedUpTo[q]+1 {
-						r.ExecedUpTo[q] = inst
-					} /*
-						deps := r.InstanceSpace[q][inst].Deps
-						for p := 0; p < r.N; p++ {
-							for j := deps[p] + 1; j <= r.crtInstance[p]; j++ {
-								if r.InstanceSpace[p][j] == nil || r.InstanceSpace[p][j].Deps == nil || r.InstanceSpace[p][j].Status >= COMMITTED {
-									continue
-								}
-								//r.PrintDebug("executeCommands2", "replica", p, "instance", j, "r.InstanceSpace[p][j].Deps[q]", r.InstanceSpace[p][j].Deps[q])
-								if r.InstanceSpace[p][j].Deps[q] == inst {
-									r.PrintDebug("handlePreAcceptReply", "replica", p, "instance", j, "deps", deps[p], "crtInstance", r.crtInstance[p])
-									r.handlePreAcceptReply(&PreAcceptReply{
-										Replica:       int32(p),
-										Instance:      j,
-										Deps:          r.InstanceSpace[p][j].Deps,
-										CommittedDeps: r.CommittedUpTo,
-										reach:         r.InstanceSpace[p][j].reach,
-									})
-								}
-							}
-						}*/
-					//r.PrintDebug("end of executeCommands")
+					if ok := r.exec.executeCommand(int32(q), inst); ok {
+						r.PrintDebug("successfully executed instance", inst, "replica", q)
+						executed = true
+						if inst == r.ExecedUpTo[q]+1 {
+							r.ExecedUpTo[q] = inst
+						}
+						//r.PrintDebug("end of executeCommands")
+					}
 				}
 			}
-		}
-		if !executed {
-			//r.Printf("sleep")
-			//r.M.Lock()
-			//r.M.Unlock() // FIXME for cache coherence
-			time.Sleep(SLEEP_TIME_NS)
+			if !executed {
+				//r.Printf("sleep")
+				//r.M.Lock()
+				//r.M.Unlock() // FIXME for cache coherence
+				time.Sleep(SLEEP_TIME_NS)
+			}
 		}
 	}
-}
-
+*/
 func isInitialBallot(ballot int32, replica int32) bool {
 	return ballot == replica
 }
@@ -658,6 +790,8 @@ func (r *Replica) bcastCommit(replica int32, instance int32) {
 }
 
 func (r *Replica) updateCommitted(replica int32) {
+	r.committedMu.RLock()
+	defer r.committedMu.RUnlock()
 	for r.InstanceSpace[replica][r.CommittedUpTo[replica]+1] != nil &&
 		(r.InstanceSpace[replica][r.CommittedUpTo[replica]+1].Status == COMMITTED ||
 			r.InstanceSpace[replica][r.CommittedUpTo[replica]+1].Status == EXECUTED) {
@@ -667,6 +801,8 @@ func (r *Replica) updateCommitted(replica int32) {
 
 func (r *Replica) updateConflicts(cmds []state.Command, replica int32, instance int32) {
 	//r.PrintDebug("updateConflicts", "replica", replica, "instance", instance, "seq", seq)
+	r.conflictMu.Lock()
+	defer r.conflictMu.Unlock()
 	for i := 0; i < len(cmds); i++ {
 		if dpair, present := r.conflicts[replica][cmds[i].K]; present {
 			r.PrintDebug("replica", replica, "instance", instance, "cmds", i, "key", cmds[i].K, "dpair.last", dpair.last, "dpair.lastWrite", dpair.lastWrite)
@@ -693,6 +829,8 @@ func (r *Replica) updateConflicts(cmds []state.Command, replica int32, instance 
 }
 
 func (r *Replica) updateAttributes(cmds []state.Command, deps []int32, replica int32) ([]int32, bool) {
+	r.conflictMu.RLock()
+	defer r.conflictMu.RUnlock()
 	changed := false
 	for q := 0; q < r.N; q++ {
 		if r.Id != replica && int32(q) == replica {
@@ -700,14 +838,14 @@ func (r *Replica) updateAttributes(cmds []state.Command, deps []int32, replica i
 		}
 		for i := 0; i < len(cmds); i++ {
 			if dpair, present := (r.conflicts[q])[cmds[i].K]; present {
-				r.PrintDebug("updateAttributes q", q, "replica", replica, "cmds", i, "key", cmds[i].K, "dpair.last", dpair.last, "dpair.lastWrite", dpair.lastWrite)
+				//r.PrintDebug("updateAttributes q", q, "replica", replica, "cmds", i, "key", cmds[i].K, "dpair.last", dpair.last, "dpair.lastWrite", dpair.lastWrite)
 				d := dpair.lastWrite
 				if cmds[i].Op != state.GET {
 					d = dpair.last
 				}
 
 				if d > deps[q] {
-					r.PrintDebug("updateAttributes q", q, "replica", replica, "cmds", i, "key", cmds[i].K, "d", d, "deps[q]", deps[q])
+					//r.PrintDebug("updateAttributes q", q, "replica", replica, "cmds", i, "key", cmds[i].K, "d", d, "deps[q]", deps[q])
 					deps[q] = d
 					for j := 0; j < len(r.InstanceSpace[q][d].Deps); j++ {
 						if r.InstanceSpace[q][d].Deps[j] > deps[j] {
@@ -725,6 +863,8 @@ func (r *Replica) updateAttributes(cmds []state.Command, deps []int32, replica i
 
 func (r *Replica) updatePriority(cmds []state.Command, deps []int32, replica int32, instance int32) []int32 {
 	r.PrintDebug("updatePriority", "deps", deps, "replica", replica, "instance", instance)
+	r.conflictMu.RLock()
+	defer r.conflictMu.RUnlock()
 	conflictmap := make([][]int32, r.N)
 	for i := 0; i < len(cmds); i++ {
 		for q := r.N - 1; q >= 0; q-- {
@@ -737,14 +877,14 @@ func (r *Replica) updatePriority(cmds []state.Command, deps []int32, replica int
 				if cmds[i].Op != state.GET {
 					d = dpair.last
 				}
-				r.PrintDebug("updatePriority q", q, "cmds", i, "key", cmds[i].K, "dpair.last", dpair.last, "dpair.lastWrite", dpair.lastWrite, "d", d, "deps[q]", deps[q])
+				//r.PrintDebug("updatePriority q", q, "cmds", i, "key", cmds[i].K, "dpair.last", dpair.last, "dpair.lastWrite", dpair.lastWrite, "d", d, "deps[q]", deps[q])
 				if d > deps[q] {
 					if int32(q) > replica { //优先级更高
 						for j := deps[q] + 1; j <= d; j++ {
 							if r.InstanceSpace[q][j] == nil {
 								continue
 							}
-							r.PrintDebug("updatePriority2", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance)
+							//r.PrintDebug("updatePriority2", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance)
 
 							for k := 0; k < len(r.InstanceSpace[q][j].Cmds); k++ {
 								if r.InstanceSpace[q][j].Cmds[k].K == cmds[i].K {
@@ -754,7 +894,7 @@ func (r *Replica) updatePriority(cmds []state.Command, deps []int32, replica int
 									}
 								}
 							}
-							r.PrintDebug("updatePriority3", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance)
+							//r.PrintDebug("updatePriority3", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance)
 							//r.InstanceSpace[q][j].Deps[replica] = instance
 						}
 					} else if int32(q) < replica && int32(q) == r.Id { //优先级更低
@@ -762,17 +902,16 @@ func (r *Replica) updatePriority(cmds []state.Command, deps []int32, replica int
 							if r.InstanceSpace[q][j] == nil {
 								continue
 							}
-							r.PrintDebug("updatePriority2", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance)
+							//r.PrintDebug("updatePriority2", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance)
 							if r.InstanceSpace[q][j].Deps[replica] < instance {
-								r.PrintDebug("conflictmap", conflictmap)
-								r.PrintDebug("q", q, "j", j, "r.InstanceSpace[q][j].Deps", r.InstanceSpace[q][j].Deps)
+								//r.PrintDebug("conflictmap", conflictmap)
+								//r.PrintDebug("q", q, "j", j, "r.InstanceSpace[q][j].Deps", r.InstanceSpace[q][j].Deps)
 								priority := true
 
 								for k := replica + 1; k < int32(r.N); k++ {
 									if conflictmap[k] != nil {
-										r.PrintDebug("k", k, "conflictmap[k]", conflictmap[k])
 										for _, l := range conflictmap[k] {
-											r.PrintDebug("l", l, "r.InstanceSpace[q][j].Deps[k]", r.InstanceSpace[q][j].Deps[k])
+											//r.PrintDebug("l", l, "r.InstanceSpace[q][j].Deps[k]", r.InstanceSpace[q][j].Deps[k])
 											if r.InstanceSpace[q][j].Deps[k] == l {
 												priority = false
 												break
@@ -784,7 +923,7 @@ func (r *Replica) updatePriority(cmds []state.Command, deps []int32, replica int
 									}
 								}
 								if priority {
-									r.PrintDebug("updatePriority4", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance, "d", d, "deps[q]", deps[q])
+									//r.PrintDebug("updatePriority4", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance, "d", d, "deps[q]", deps[q])
 									deps[q] = j
 								}
 							}
@@ -832,7 +971,7 @@ func (r *Replica) handlePropose(propose *defs.GPropose) {
 	r.M.Unlock()*/
 
 	r.crtInstance[r.Id]++
-	r.PrintDebug("r.Id", r.Id, "instance", r.crtInstance[r.Id])
+	//r.PrintDebug("r.Id", r.Id, "instance", r.crtInstance[r.Id])
 	cmds := make([]state.Command, batchSize)
 	proposals := make([]*defs.GPropose, batchSize)
 	cmds[0] = propose.Command
@@ -863,13 +1002,13 @@ func (r *Replica) startPhase1(cmds []state.Command, replica int32, instance int3
 	inst := r.newInstance(replica, instance, cmds, ballot, ballot, PREACCEPTED, -1, deps)
 	inst.lb = r.newLeaderBookkeeping(proposals, deps, comDeps, deps, ballot, cmds, PREACCEPTED, -1)
 	r.InstanceSpace[replica][instance] = inst
-	r.PrintDebug("deps", deps)
+	//r.PrintDebug("deps", deps)
 	r.updateConflicts(cmds, replica, instance)
 
 	//r.recordInstanceMetadata(r.InstanceSpace[r.Id][instance])
 	//r.recordCommands(cmds)
 	//r.sync()
-	r.PrintDebug("time", time.Now())
+	r.PrintDebug("startPhase1 time", time.Now())
 
 	r.PrintDebug("start pareply.Replica", replica, "pareply.Instance", instance, "inst.Deps", inst.Deps, "r.CommittedUpTo", r.CommittedUpTo)
 	reply := &PreAcceptReply{
@@ -1054,8 +1193,13 @@ func (r *Replica) handlePreAcceptReply(pareply *PreAcceptReply) {
 	precondition := inst.priorityOKs && inst.allCommitted && inst.preAcceptOKs > (r.N/2)
 	r.PrintDebug("pareply.Replica", pareply.Replica, "pareply.Instance", pareply.Instance, "priorityOKs", inst.priorityOKs, "allCommitted", inst.allCommitted, "preAcceptOKs", inst.preAcceptOKs, "precondition", precondition)
 	if precondition && inst.Status <= PREACCEPTED_EQ {
-		r.PrintDebug("handlePreAcceptReply.time", time.Since(inst.time))
+		r.PrintDebug("latency time", time.Since(inst.time))
 		inst.Status = COMMITTED
+		r.updateCommitted(pareply.Replica)
+		select {
+		case r.deliverChan <- &instanceId{pareply.Replica, pareply.Instance}:
+		default:
+		}
 		if pareply.Replica == r.Id {
 
 			if inst.lb.clientProposals != nil && !r.Dreply {
@@ -1076,9 +1220,8 @@ func (r *Replica) handlePreAcceptReply(pareply *PreAcceptReply) {
 		//r.recordInstanceMetadata(inst)
 		//r.sync()
 
-		r.updateCommitted(pareply.Replica)
-		r.PrintDebug("r.crtInstance", r.crtInstance)
-		for p := 0; p < r.N; p++ {
+		//r.PrintDebug("r.crtInstance", r.crtInstance)
+		/*for p := 0; p < r.N; p++ {
 			for j := inst.Deps[p] + 1; j <= r.crtInstance[p]; j++ {
 				if r.InstanceSpace[p][j] != nil && r.InstanceSpace[p][j].Deps != nil && r.InstanceSpace[p][j].Deps[pareply.Replica] == pareply.Instance && r.InstanceSpace[p][j].Status <= PREACCEPTED_EQ && r.InstanceSpace[p][j].preAcceptOKs > (r.N/2) && r.InstanceSpace[p][j].priorityOKs {
 					r.PrintDebug("retry preaccept")
@@ -1091,7 +1234,7 @@ func (r *Replica) handlePreAcceptReply(pareply *PreAcceptReply) {
 					})
 				}
 			}
-		}
+		}*/
 
 		/*r.M.Lock()
 		r.Stats.M["fast"]++
@@ -1675,4 +1818,75 @@ func (r *Replica) newNilDeps() []int32 {
 		nildeps[i] = -1
 	}
 	return nildeps
+}
+
+// deliverInstance tries to execute the instance if it is COMMITTED and all dependencies are executed.
+func (r *Replica) deliverInstance(d *instDesc) {
+	r.PrintDebug("deliverInstance.time", time.Now())
+	if d.inst == nil {
+		// lazy fetch
+		d.inst = r.InstanceSpace[d.id.replica][d.id.instance]
+		if d.inst == nil {
+			return
+		}
+	}
+	r.PrintDebug("deliverInstance", "d.id.replica", d.id.replica, "d.id.instance", d.id.instance, "status", d.inst.Status)
+	if d.inst.Status < COMMITTED {
+		return
+	}
+
+	key := instKey(d.id.replica, d.id.instance)
+	if r.delivered.Has(key) {
+		return
+	}
+
+	// check dependencies delivered
+	for q := 0; q < r.N; q++ {
+		dep := d.inst.Deps[q]
+		if dep >= 0 {
+			if !r.delivered.Has(instKey(int32(q), dep)) {
+				return
+			}
+		}
+	}
+
+	if ok := r.exec.executeCommand(d.id.replica, d.id.instance); ok {
+		r.delivered.Set(key, struct{}{})
+
+		if d.id.instance == r.ExecedUpTo[d.id.replica]+1 {
+			r.ExecedUpTo[d.id.replica] = d.id.instance
+			// ensure CommittedUpTo also progresses so successors see updated state
+		}
+
+		// ② 遍历 StateSpace，找到 "deps[replica] == instance" 的待执行实例
+		for p := int32(0); p < int32(r.N); p++ {
+			for j := d.inst.Deps[p] + 1; j <= r.crtInstance[p]; j++ {
+				inst := r.InstanceSpace[p][j]
+				if inst == nil || inst.Deps == nil {
+					continue
+				}
+
+				// 如果仍处于预接受阶段但已满足快速提交条件，则直接触发提交逻辑
+				if inst.Status <= PREACCEPTED_EQ && inst.preAcceptOKs > (r.N/2) && inst.priorityOKs && inst.Deps[d.id.replica] == d.id.instance {
+					r.PrintDebug("deliverInstance handlePreAcceptReply", "d.id.replica", d.id.replica, "d.id.instance", d.id.instance)
+					r.handlePreAcceptReply(&PreAcceptReply{
+						Replica:       int32(p),
+						Instance:      j,
+						Command:       inst.Cmds,
+						Deps:          inst.Deps,
+						CommittedDeps: r.CommittedUpTo,
+						reach:         inst.reach,
+					})
+				}
+
+				// 只要已提交，且依赖等于当前实例，就尝试推进执行
+				if inst.Status >= COMMITTED && inst.Deps[d.id.replica] == d.id.instance {
+					select {
+					case r.deliverChan <- &instanceId{p, j}:
+					default:
+					}
+				}
+			}
+		}
+	}
 }

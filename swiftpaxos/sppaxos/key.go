@@ -1,4 +1,4 @@
-package ppaxos
+package swift
 
 import (
 	"encoding/binary"

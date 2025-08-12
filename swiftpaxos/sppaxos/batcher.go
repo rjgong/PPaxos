@@ -1,4 +1,4 @@
-package ppaxos
+package swift
 
 import fastrpc "github.com/imdea-software/swiftpaxos/rpc"
 

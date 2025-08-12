@@ -11,8 +11,9 @@ import (
 // master RPC definitions
 
 type RegisterArgs struct {
-	Addr string
-	Port int
+	Addr  string
+	Port  int
+	Alias string // replica alias for deterministic id
 }
 
 type RegisterReply struct {

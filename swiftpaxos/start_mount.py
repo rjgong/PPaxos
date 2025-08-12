@@ -3,17 +3,53 @@ import yaml
 from dotenv import load_dotenv
 import os
 
-CONTAINERS_FILE = "./containers.yml"
+def is_valid_ip(s):
+    """一个简单的辅助函数，用来判断一个字符串是否是IP地址格式。"""
+    parts = s.split('.')
+    if len(parts) != 4:
+        return False
+    for item in parts:
+        if not item.isdigit() or not 0 <= int(item) <= 255:
+            return False
+    return True
 
-load_dotenv('hosts.env')
-hosts = [
-    "18.181.68.30",
-    "3.115.96.150",
-    "54.178.167.57",
-    "54.95.19.6"
-]
+config_data = {
+    "master": [],
+    "replicas": [],
+    "clients": []
+}
+current_section = None
 
-containers = []
+with open('local.conf', 'r') as file:
+        for line in file:
+            
+            line_content = line.split('//')[0]
+            clean_line = line_content.strip()
+            if not clean_line:
+                continue
+
+            if clean_line.startswith('--') and clean_line.endswith('--'):
+                section_name = clean_line.strip('- ').lower()
+                if 'replica' in section_name:
+                    current_section = 'replicas'
+                elif 'client' in section_name:
+                    current_section = 'clients'
+                elif 'master' in section_name:
+                    current_section = 'master'
+                continue
+
+            if current_section:
+                parts = clean_line.split()
+                if len(parts) == 2 and is_valid_ip(parts[1]):
+                    alias, ip = parts
+                    config_data[current_section].append((alias, ip))
+
+master_nodes = config_data['master']
+replica_nodes = config_data['replicas']
+client_nodes = config_data['clients']
+
+all_active_nodes = replica_nodes + client_nodes
+hosts = [node[1] for node in all_active_nodes]
 
 for i in range(len(hosts)):
     # each region takes a subnet
@@ -53,8 +89,3 @@ for i in range(len(hosts)):
     for command in ssh_command:
         print(command)
         subprocess.call(['ssh', '-o', 'StrictHostKeyChecking=no', host, command])
-
-with open(CONTAINERS_FILE, 'w+') as f:
-    data = {}
-    data['containers'] = containers
-    yaml.dump(data, f)

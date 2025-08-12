@@ -17,6 +17,7 @@ import (
 	"github.com/imdea-software/swiftpaxos/fastpaxos"
 	"github.com/imdea-software/swiftpaxos/n2paxos"
 	"github.com/imdea-software/swiftpaxos/paxos"
+	"github.com/imdea-software/swiftpaxos/ppaxos"
 	"github.com/imdea-software/swiftpaxos/replica/defs"
 	"github.com/imdea-software/swiftpaxos/swift"
 )
@@ -27,14 +28,19 @@ func runReplica(c *config.Config, logger *dlog.Logger) {
 	log.Printf("Server starting on port %d", port)
 	maddr := fmt.Sprintf("%s:%d", c.MasterAddr, c.MasterPort)
 	addr := c.ReplicaAddrs[c.Alias]
-	replicaId, nodeList, isLeader := registerWithMaster(addr, maddr, port)
+	replicaId, nodeList, isLeader := registerWithMaster(addr, maddr, port, c)
+	log.Printf("Alias %s assigned replicaId %d", c.Alias, replicaId)
 	f := (len(c.ReplicaAddrs) - 1) / 2
 	log.Printf("Tolerating %d max. failures", f)
 
 	switch strings.ToLower(c.Protocol) {
 	case "eppaxos":
-		log.Println("Starting PPaxos replica...")
+		log.Println("Starting eppaxos replica...")
 		rep := eppaxos.New(c.Alias, replicaId, nodeList, !c.Noop, false, false, 0, false, f, c, logger)
+		rpc.Register(rep)
+	case "ppaxos":
+		log.Println("Starting ppaxos replica...")
+		rep := ppaxos.New(c.Alias, replicaId, nodeList, !c.Noop, false, false, 0, false, f, c, logger)
 		rpc.Register(rep)
 	case "swiftpaxos":
 		log.Println("Starting SwiftPaxos replica...")
@@ -74,11 +80,12 @@ func runReplica(c *config.Config, logger *dlog.Logger) {
 	http.Serve(l, nil)
 }
 
-func registerWithMaster(addr, mAddr string, port int) (int, []string, bool) {
+func registerWithMaster(addr, mAddr string, port int, c *config.Config) (int, []string, bool) {
 	var reply defs.RegisterReply
 	args := &defs.RegisterArgs{
-		Addr: addr,
-		Port: port,
+		Addr:  addr,
+		Port:  port,
+		Alias: c.Alias,
 	}
 	log.Printf("connecting to: %v", mAddr)
 

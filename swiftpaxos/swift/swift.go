@@ -11,7 +11,7 @@ import (
 	"github.com/imdea-software/swiftpaxos/replica"
 	"github.com/imdea-software/swiftpaxos/replica/defs"
 	"github.com/imdea-software/swiftpaxos/state"
-	"github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map"
 )
 
 type Replica struct {
@@ -276,6 +276,7 @@ func (r *Replica) run() {
 			cmdId.SeqNum = propose.CommandId
 			r.proposes[cmdId] = propose
 			dep, hs := r.getDepAndHashes(propose.Command, cmdId)
+			//r.Printf("[dep] cmd %v depends on %v\n", cmdId, dep)
 			if upd, exists := r.pendingHashUpds[cmdId]; exists && r.leader() != r.Id {
 				// TODO: when pipelining this can break ordering, disabling fast paths.
 				delete(r.pendingHashUpds, cmdId)

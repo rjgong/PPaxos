@@ -1,4 +1,4 @@
-package ppaxos
+package swift
 
 import (
 	"log"
@@ -9,7 +9,7 @@ import (
 	"github.com/imdea-software/swiftpaxos/replica"
 	"github.com/imdea-software/swiftpaxos/replica/defs"
 	"github.com/imdea-software/swiftpaxos/state"
-	cmap "github.com/orcaman/concurrent-map"
+	"github.com/orcaman/concurrent-map"
 )
 
 func (r *Replica) handleNewLeader(msg *MNewLeader) {

@@ -55,7 +55,7 @@ for i in range(len(hosts)):
     host = hosts[i % len(hosts)]
     print(host)
     #print(PORT1, PORT2)
-    ssh_command = ["pkill -f swiftpaxos"]
+    ssh_command = ["rm ~/share/swiftpaxos/logs/*"]
 
     '''
     ssh_command = [

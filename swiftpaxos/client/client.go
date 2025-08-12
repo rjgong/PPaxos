@@ -178,13 +178,15 @@ func (c *Client) SendProposal(cmd defs.Propose) {
 		d = c.ClosestId
 	}
 
+	//d = rand.Intn(len(c.replicas))
+
 	if !c.Fast {
-		c.PrintDebug("sending command", cmd.CommandId, "to", d)
+		//c.PrintDebug("sending command", cmd.CommandId, "to", d)
 		c.writers[d].WriteByte(defs.PROPOSE)
 		cmd.Marshal(c.writers[d])
 		c.writers[d].Flush()
 	} else {
-		c.PrintDebug("sending command", cmd.CommandId, "to everyone")
+		//c.PrintDebug("sending command", cmd.CommandId, "to everyone")
 		for rep := 0; rep < len(c.servers); rep++ {
 			if c.writers[rep] != nil {
 				c.writers[rep].WriteByte(defs.PROPOSE)
@@ -360,7 +362,7 @@ func (c *Client) findClosest(alive []bool) error {
 		out, err := exec.Command("ping", addr, "-c 3", "-q").Output()
 		if err == nil {
 			latency, _ := strconv.ParseFloat(strings.Split(string(out), "/")[4], 64)
-			c.Println(i, "->", latency)
+			c.Println(i, "->", latency) // zero-based id
 			c.Ping = append(c.Ping, latency)
 		} else {
 			c.Println(c.replicas[i], err)

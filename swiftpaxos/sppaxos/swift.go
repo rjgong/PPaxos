@@ -1,4 +1,4 @@
-package ppaxos
+package swift
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/imdea-software/swiftpaxos/replica"
 	"github.com/imdea-software/swiftpaxos/replica/defs"
 	"github.com/imdea-software/swiftpaxos/state"
-	cmap "github.com/orcaman/concurrent-map"
+	"github.com/orcaman/concurrent-map"
 )
 
 type Replica struct {

@@ -1,4 +1,4 @@
-package ppaxos
+package swift
 
 import (
 	"github.com/imdea-software/swiftpaxos/replica/defs"
