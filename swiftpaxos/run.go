@@ -17,7 +17,6 @@ import (
 	"github.com/imdea-software/swiftpaxos/fastpaxos"
 	"github.com/imdea-software/swiftpaxos/n2paxos"
 	"github.com/imdea-software/swiftpaxos/paxos"
-	"github.com/imdea-software/swiftpaxos/ppaxos"
 	"github.com/imdea-software/swiftpaxos/replica/defs"
 	"github.com/imdea-software/swiftpaxos/swift"
 )
@@ -37,10 +36,6 @@ func runReplica(c *config.Config, logger *dlog.Logger) {
 	case "eppaxos":
 		log.Println("Starting eppaxos replica...")
 		rep := eppaxos.New(c.Alias, replicaId, nodeList, !c.Noop, false, false, 0, false, f, c, logger)
-		rpc.Register(rep)
-	case "ppaxos":
-		log.Println("Starting ppaxos replica...")
-		rep := ppaxos.New(c.Alias, replicaId, nodeList, !c.Noop, false, false, 0, false, f, c, logger)
 		rpc.Register(rep)
 	case "swiftpaxos":
 		log.Println("Starting SwiftPaxos replica...")

@@ -41,7 +41,7 @@ func (e *Exec) executeCommand(replica int32, instance int32) bool {
 		e.r.PrintDebug("Instance", instance, "on replica", replica, "is not a SCC")
 		return false
 	}
-	//e.r.PrintDebug("Instance", instance, "on replica", replica, "is a SCC")
+	e.r.PrintDebug("Instance", instance, "on replica", replica, "is a SCC1")
 	return true
 }
 
@@ -89,7 +89,7 @@ func (e *Exec) strongconnect(v *Instance, index *int) bool {
 				return false
 			}
 
-			if e.r.transconf {
+			/*if e.r.transconf {
 				for _, alpha := range v.Cmds {
 					for _, beta := range e.r.InstanceSpace[q][i].Cmds {
 						if !state.Conflict(&alpha, &beta) {
@@ -97,7 +97,7 @@ func (e *Exec) strongconnect(v *Instance, index *int) bool {
 						}
 					}
 				}
-			}
+			}*/
 
 			if e.r.InstanceSpace[q][i].Status == EXECUTED {
 				continue
@@ -143,16 +143,17 @@ func (e *Exec) strongconnect(v *Instance, index *int) bool {
 					val := w.Cmds[idx].Execute(e.r.State)
 					e.r.ReplyProposeTS(
 						&defs.ProposeReplyTS{
-							TRUE,
-							w.lb.clientProposals[idx].CommandId,
-							val,
-							w.lb.clientProposals[idx].Timestamp},
+							OK:        TRUE,
+							CommandId: w.lb.clientProposals[idx].CommandId,
+							Value:     val,
+							Timestamp: w.lb.clientProposals[idx].Timestamp},
 						w.lb.clientProposals[idx].Reply,
 						w.lb.clientProposals[idx].Mutex)
 				} else if w.Cmds[idx].Op == state.PUT {
 					w.Cmds[idx].Execute(e.r.State)
 				}
 			}
+			e.r.PrintDebug("Command", w.id.instance, "on replica", w.id.replica, "is executed")
 			w.Status = EXECUTED
 		}
 		stack = stack[0:l]

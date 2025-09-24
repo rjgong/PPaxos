@@ -464,6 +464,7 @@ func (r *Replica) BatchingEnabled() bool {
 }
 
 func (r *Replica) run() {
+	r.PrintDebug("loop top", time.Now())
 	r.ConnectToPeers()
 
 	r.ComputeClosestPeers()
@@ -493,6 +494,7 @@ func (r *Replica) run() {
 		select {
 
 		case propose := <-onOffProposeChan:
+			//r.PrintDebug("received propose time", time.Now())
 			r.handlePropose(propose)
 			if r.BatchingEnabled() {
 				onOffProposeChan = nil
@@ -523,7 +525,7 @@ func (r *Replica) run() {
 			r.handlePrepareReply(prepareReply)
 
 		case preAcceptReplyS := <-r.preAcceptReplyChan:
-			//r.PrintDebug("received time", time.Now(), "time since recv", time.Since(preAcceptReplyS.(*PreAcceptReply).RecvTs))
+			//r.PrintDebug("received preAcceptReply time", time.Now(), "time since recv", time.Since(preAcceptReplyS.(*PreAcceptReply).RecvTs))
 			preAcceptReply := preAcceptReplyS.(*PreAcceptReply)
 			r.handlePreAcceptReply(preAcceptReply)
 
@@ -877,14 +879,14 @@ func (r *Replica) updatePriority(cmds []state.Command, deps []int32, replica int
 				if cmds[i].Op != state.GET {
 					d = dpair.last
 				}
-				//r.PrintDebug("updatePriority q", q, "cmds", i, "key", cmds[i].K, "dpair.last", dpair.last, "dpair.lastWrite", dpair.lastWrite, "d", d, "deps[q]", deps[q])
+				r.PrintDebug("updatePriority q", q, "cmds", i, "key", cmds[i].K, "dpair.last", dpair.last, "dpair.lastWrite", dpair.lastWrite, "d", d, "deps[q]", deps[q])
 				if d > deps[q] {
 					if int32(q) > replica { //优先级更高
 						for j := deps[q] + 1; j <= d; j++ {
 							if r.InstanceSpace[q][j] == nil {
 								continue
 							}
-							//r.PrintDebug("updatePriority2", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance)
+							r.PrintDebug("updatePriority2", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance)
 
 							for k := 0; k < len(r.InstanceSpace[q][j].Cmds); k++ {
 								if r.InstanceSpace[q][j].Cmds[k].K == cmds[i].K {
@@ -899,34 +901,44 @@ func (r *Replica) updatePriority(cmds []state.Command, deps []int32, replica int
 						}
 					} else if int32(q) < replica && int32(q) == r.Id { //优先级更低
 						for j := deps[q] + 1; j <= d; j++ {
-							if r.InstanceSpace[q][j] == nil {
+							if r.InstanceSpace[q][j] == nil || r.InstanceSpace[q][j].Deps[replica] >= instance {
 								continue
 							}
-							//r.PrintDebug("updatePriority2", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance)
-							if r.InstanceSpace[q][j].Deps[replica] < instance {
-								//r.PrintDebug("conflictmap", conflictmap)
-								//r.PrintDebug("q", q, "j", j, "r.InstanceSpace[q][j].Deps", r.InstanceSpace[q][j].Deps)
-								priority := true
 
-								for k := replica + 1; k < int32(r.N); k++ {
-									if conflictmap[k] != nil {
-										for _, l := range conflictmap[k] {
-											//r.PrintDebug("l", l, "r.InstanceSpace[q][j].Deps[k]", r.InstanceSpace[q][j].Deps[k])
-											if r.InstanceSpace[q][j].Deps[k] == l {
-												priority = false
-												break
-											}
-										}
-									}
-									if !priority {
+							r.PrintDebug("updatePriority2", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance)
+
+							//r.PrintDebug("conflictmap", conflictmap)
+							//r.PrintDebug("q", q, "j", j, "r.InstanceSpace[q][j].Deps", r.InstanceSpace[q][j].Deps)
+							priority := false
+
+							for k := 0; k < len(r.InstanceSpace[q][j].Cmds); k++ {
+								if r.InstanceSpace[q][j].Cmds[k].K == cmds[i].K {
+									if r.InstanceSpace[q][j].Cmds[k].Op != state.GET || cmds[i].Op != state.GET {
+										priority = true
 										break
 									}
 								}
-								if priority {
-									//r.PrintDebug("updatePriority4", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance, "d", d, "deps[q]", deps[q])
-									deps[q] = j
+							}
+
+							for k := replica + 1; k < int32(r.N); k++ {
+								if conflictmap[k] != nil {
+									for _, l := range conflictmap[k] {
+										r.PrintDebug("l", l, "r.InstanceSpace[q][j].Deps[k]", r.InstanceSpace[q][j].Deps[k])
+										if r.InstanceSpace[q][j].Deps[k] == l {
+											priority = false
+											break
+										}
+									}
+								}
+								if !priority {
+									break
 								}
 							}
+							if priority {
+								r.PrintDebug("updatePriority4", "j", j, "r.InstanceSpace[q][j].Deps[replica]", r.InstanceSpace[q][j].Deps[replica], "instance", instance, "d", d, "deps[q]", deps[q])
+								deps[q] = j
+							}
+
 						}
 					}
 				}
@@ -963,8 +975,9 @@ func equal(deps1 []int32, deps2 []int32) bool {
 
 func (r *Replica) handlePropose(propose *defs.GPropose) {
 	//TODO!! Handle client retries
-	//r.PrintDebug("handlePropose time", time.Now())
+	r.PrintDebug("handlePropose time", time.Now())
 	batchSize := len(r.ProposeChan) + 1
+	//batchSize := 1
 	/*r.M.Lock()
 	r.Stats.M["totalBatching"]++
 	r.Stats.M["totalBatchingSize"] += batchSize
@@ -1002,6 +1015,7 @@ func (r *Replica) startPhase1(cmds []state.Command, replica int32, instance int3
 	inst := r.newInstance(replica, instance, cmds, ballot, ballot, PREACCEPTED, -1, deps)
 	inst.lb = r.newLeaderBookkeeping(proposals, deps, comDeps, deps, ballot, cmds, PREACCEPTED, -1)
 	r.InstanceSpace[replica][instance] = inst
+	inst.Deps[replica] = instance - 1
 	//r.PrintDebug("deps", deps)
 	r.updateConflicts(cmds, replica, instance)
 
@@ -1190,59 +1204,77 @@ func (r *Replica) handlePreAcceptReply(pareply *PreAcceptReply) {
 		}
 	}
 
+	/*for q := 0; q < r.N; q++ {
+		if inst.Deps[q] == -1 {
+			continue
+		} else if r.InstanceSpace[q][inst.Deps[q]] == nil || r.InstanceSpace[q][inst.Deps[q]].Status < COMMITTED {
+			inst.allCommitted = false
+			break
+		}
+	}*/
+
 	precondition := inst.priorityOKs && inst.allCommitted && inst.preAcceptOKs > (r.N/2)
 	r.PrintDebug("pareply.Replica", pareply.Replica, "pareply.Instance", pareply.Instance, "priorityOKs", inst.priorityOKs, "allCommitted", inst.allCommitted, "preAcceptOKs", inst.preAcceptOKs, "precondition", precondition)
 	if precondition && inst.Status <= PREACCEPTED_EQ {
+		r.PrintDebug("pareply.Replica", pareply.Replica, "pareply.Instance", pareply.Instance, "final deps", inst.Deps)
 		r.PrintDebug("latency time", time.Since(inst.time))
 		inst.Status = COMMITTED
 		r.updateCommitted(pareply.Replica)
-		select {
-		case r.deliverChan <- &instanceId{pareply.Replica, pareply.Instance}:
-		default:
-		}
+
 		if pareply.Replica == r.Id {
 
-			if inst.lb.clientProposals != nil && !r.Dreply {
-				for i := 0; i < len(inst.lb.clientProposals); i++ {
-					r.ReplyProposeTS(
-						&defs.ProposeReplyTS{
-							OK:        TRUE,
-							CommandId: inst.lb.clientProposals[i].CommandId,
-							Value:     state.NIL(),
-							Timestamp: inst.lb.clientProposals[i].Timestamp},
-						inst.lb.clientProposals[i].Reply,
-						inst.lb.clientProposals[i].Mutex)
+			key := instKey(pareply.Replica, pareply.Instance)
+			r.delivered.Set(key, struct{}{})
+
+			for idx := 0; idx < len(inst.lb.clientProposals); idx++ {
+				prop := inst.lb.clientProposals[idx]
+				var retVal state.Value
+				if prop.Command.Op != state.PUT {
+					retVal = prop.Command.Execute(r.State) // GET / SCAN
+				} else {
+					prop.Command.Execute(r.State) // PUT 落库
+					retVal = state.NIL()          // 只需 ACK
 				}
+
+				r.ReplyProposeTS(
+					&defs.ProposeReplyTS{
+						OK:        TRUE,
+						CommandId: prop.CommandId,
+						Value:     retVal,
+						Timestamp: prop.Timestamp},
+					prop.Reply,
+					prop.Mutex)
 			}
-
 		}
-		//r.recordCommands(inst.Cmds)
-		//r.recordInstanceMetadata(inst)
-		//r.sync()
 
-		//r.PrintDebug("r.crtInstance", r.crtInstance)
-		/*for p := 0; p < r.N; p++ {
-			for j := inst.Deps[p] + 1; j <= r.crtInstance[p]; j++ {
-				if r.InstanceSpace[p][j] != nil && r.InstanceSpace[p][j].Deps != nil && r.InstanceSpace[p][j].Deps[pareply.Replica] == pareply.Instance && r.InstanceSpace[p][j].Status <= PREACCEPTED_EQ && r.InstanceSpace[p][j].preAcceptOKs > (r.N/2) && r.InstanceSpace[p][j].priorityOKs {
-					r.PrintDebug("retry preaccept")
-					r.handlePreAcceptReply(&PreAcceptReply{
-						Replica:       int32(p),
-						Instance:      j,
-						Deps:          r.InstanceSpace[p][j].Deps,
-						CommittedDeps: r.CommittedUpTo,
-						reach:         r.InstanceSpace[p][j].reach,
-					})
-				}
-			}
-		}*/
-
-		/*r.M.Lock()
-		r.Stats.M["fast"]++
-		if inst.proposeTime != 0 {
-			r.Stats.M["totalCommitTime"] += int(time.Now().UnixNano() - inst.proposeTime)
-		}
-		r.M.Unlock()*/
 	}
+	//r.recordCommands(inst.Cmds)
+	//r.recordInstanceMetadata(inst)
+	//r.sync()
+
+	//r.PrintDebug("r.crtInstance", r.crtInstance)
+	for p := 0; p < r.N; p++ {
+		for j := inst.Deps[p] + 1; j <= r.crtInstance[p]; j++ {
+			if r.InstanceSpace[p][j] != nil && r.InstanceSpace[p][j].Deps != nil && r.InstanceSpace[p][j].Deps[pareply.Replica] == pareply.Instance && r.InstanceSpace[p][j].Status <= PREACCEPTED_EQ && r.InstanceSpace[p][j].preAcceptOKs > (r.N/2) && r.InstanceSpace[p][j].priorityOKs {
+				r.PrintDebug("retry preaccept")
+				r.handlePreAcceptReply(&PreAcceptReply{
+					Replica:       int32(p),
+					Instance:      j,
+					Deps:          r.InstanceSpace[p][j].Deps,
+					CommittedDeps: r.CommittedUpTo,
+					reach:         r.InstanceSpace[p][j].reach,
+				})
+			}
+		}
+	}
+
+	/*r.M.Lock()
+	r.Stats.M["fast"]++
+	if inst.proposeTime != 0 {
+		r.Stats.M["totalCommitTime"] += int(time.Now().UnixNano() - inst.proposeTime)
+	}
+	r.M.Unlock()*/
+
 }
 
 func (r *Replica) handleAccept(accept *Accept) {
@@ -1822,7 +1854,8 @@ func (r *Replica) newNilDeps() []int32 {
 
 // deliverInstance tries to execute the instance if it is COMMITTED and all dependencies are executed.
 func (r *Replica) deliverInstance(d *instDesc) {
-	r.PrintDebug("deliverInstance.time", time.Now())
+	//start := time.Now()
+	//r.PrintDebug("deliverInstance.time", time.Now())
 	if d.inst == nil {
 		// lazy fetch
 		d.inst = r.InstanceSpace[d.id.replica][d.id.instance]
@@ -1830,63 +1863,81 @@ func (r *Replica) deliverInstance(d *instDesc) {
 			return
 		}
 	}
-	r.PrintDebug("deliverInstance", "d.id.replica", d.id.replica, "d.id.instance", d.id.instance, "status", d.inst.Status)
-	if d.inst.Status < COMMITTED {
-		return
-	}
+	r.PrintDebug("deliverInstance", "pareply.Replica", d.id.replica, "pareply.Instance", d.id.instance, "status", d.inst.Status)
+	r.PrintDebug("inst.Deps", d.inst.Deps)
+	r.PrintDebug("ExecedUpTo", r.ExecedUpTo)
 
 	key := instKey(d.id.replica, d.id.instance)
 	if r.delivered.Has(key) {
+		r.PrintDebug("deliverInstance already delivered", "d.id.replica", d.id.replica, "d.id.instance", d.id.instance)
 		return
 	}
-
 	// check dependencies delivered
-	for q := 0; q < r.N; q++ {
+	/*for q := 0; q < r.N; q++ {
 		dep := d.inst.Deps[q]
 		if dep >= 0 {
 			if !r.delivered.Has(instKey(int32(q), dep)) {
+				r.PrintDebug("deliverInstance dependency not delivered", "d.id.replica", d.id.replica, "d.id.instance", d.id.instance, "q", q, "dep", dep)
 				return
 			}
 		}
 	}
 
-	if ok := r.exec.executeCommand(d.id.replica, d.id.instance); ok {
-		r.delivered.Set(key, struct{}{})
 
-		if d.id.instance == r.ExecedUpTo[d.id.replica]+1 {
-			r.ExecedUpTo[d.id.replica] = d.id.instance
-			// ensure CommittedUpTo also progresses so successors see updated state
+						r.ReplyProposeTS(
+						&defs.ProposeReplyTS{
+							OK:        TRUE,
+							CommandId: inst.lb.clientProposals[i].CommandId,
+							Value:     state.NIL(),
+							Timestamp: inst.lb.clientProposals[i].Timestamp},
+						inst.lb.clientProposals[i].Reply,
+						inst.lb.clientProposals[i].Mutex)
+
+	*/
+
+	//if ok := r.exec.executeCommand(d.id.replica, d.id.instance); ok {
+	r.delivered.Set(key, struct{}{})
+	for idx := 0; idx < len(d.inst.Cmds); idx++ {
+		val := d.inst.Cmds[idx].Execute(r.State)
+		if d.inst.Cmds[idx].Op != state.PUT {
+			r.ReplyProposeTS(
+				&defs.ProposeReplyTS{
+					OK:        TRUE,
+					CommandId: d.inst.lb.clientProposals[idx].CommandId,
+					Value:     val,
+					Timestamp: d.inst.lb.clientProposals[idx].Timestamp},
+				d.inst.lb.clientProposals[idx].Reply,
+				d.inst.lb.clientProposals[idx].Mutex)
 		}
+	}
 
-		// ② 遍历 StateSpace，找到 "deps[replica] == instance" 的待执行实例
-		for p := int32(0); p < int32(r.N); p++ {
-			for j := d.inst.Deps[p] + 1; j <= r.crtInstance[p]; j++ {
-				inst := r.InstanceSpace[p][j]
-				if inst == nil || inst.Deps == nil {
-					continue
-				}
+	d.inst.Status = EXECUTED
+	if d.id.instance == r.ExecedUpTo[d.id.replica]+1 {
+		r.ExecedUpTo[d.id.replica] = d.id.instance
+		// ensure CommittedUpTo also progresses so successors see updated state
+	}
 
-				// 如果仍处于预接受阶段但已满足快速提交条件，则直接触发提交逻辑
-				if inst.Status <= PREACCEPTED_EQ && inst.preAcceptOKs > (r.N/2) && inst.priorityOKs && inst.Deps[d.id.replica] == d.id.instance {
-					r.PrintDebug("deliverInstance handlePreAcceptReply", "d.id.replica", d.id.replica, "d.id.instance", d.id.instance)
-					r.handlePreAcceptReply(&PreAcceptReply{
-						Replica:       int32(p),
-						Instance:      j,
-						Command:       inst.Cmds,
-						Deps:          inst.Deps,
-						CommittedDeps: r.CommittedUpTo,
-						reach:         inst.reach,
-					})
-				}
+	// ② 遍历 StateSpace，找到 "deps[replica] == instance" 的待执行实例
+	for p := int32(0); p < int32(r.N); p++ {
+		r.PrintDebug("d.id.replica", d.id.replica, "d.id.instance", d.id.instance, "p", p, "r.ExecedUpTo[p]", r.ExecedUpTo[p], "inst.Deps[p]", d.inst.Deps[p], "r.crtInstance[p]", r.crtInstance[p])
+		for j := d.inst.Deps[p] + 1; j <= r.crtInstance[p]; j++ {
+			//for j := r.ExecedUpTo[p] + 1; j <= r.crtInstance[p]; j++ {
+			inst := r.InstanceSpace[p][j]
+			if inst == nil || inst.Deps == nil {
+				break
+			}
 
-				// 只要已提交，且依赖等于当前实例，就尝试推进执行
-				if inst.Status >= COMMITTED && inst.Deps[d.id.replica] == d.id.instance {
-					select {
-					case r.deliverChan <- &instanceId{p, j}:
-					default:
-					}
+			// 只要已提交，且依赖等于当前实例，就尝试推进执行
+			if inst.Status == COMMITTED {
+				r.PrintDebug("COMMITTED deliverInstance", "p", p, "j", j)
+				select {
+				case r.deliverChan <- &instanceId{p, j}:
+				default:
 				}
+				break
 			}
 		}
 	}
+	//}
+	//r.PrintDebug("deliverInstance cost", time.Since(start))
 }

@@ -210,25 +210,14 @@ func NewLatencyTable(conf, myAddr string, addrs []string) *LatencyTable {
 }
 
 func (dt *LatencyTable) WaitDuration(addr string) time.Duration {
-	if dt == nil {
-		return time.Duration(0)
-	}
-	d, exists := dt.tn[strings.Split(addr, ":")[0]]
-	if exists {
-		return d
-	}
-	return dt.d
+	// Disabled simulated latency: in real multi-region deployment we rely on actual network RTT.
+	// Always return zero to avoid artificial sleep.
+	return time.Duration(0)
 }
 
 func (dt *LatencyTable) WaitDurationID(id int) time.Duration {
-	if dt == nil {
-		return time.Duration(0)
-	}
-	d, exists := dt.ti[id]
-	if exists {
-		return d
-	}
-	return dt.d
+	// Disabled simulated latency: always return zero.
+	return time.Duration(0)
 }
 
 func IP() string {

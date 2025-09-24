@@ -180,26 +180,17 @@ func (master *Master) Register(args *defs.RegisterArgs, reply *defs.RegisterRepl
 	nlen := len(master.nodeList)
 	index := nlen
 
-	// alias-based deterministic index selection: replicaN -> id N-1
+	// === alias -> deterministic index (replicaN => id N-1) ===
 	if strings.HasPrefix(strings.ToLower(args.Alias), "replica") {
 		numStr := strings.TrimPrefix(strings.ToLower(args.Alias), "replica")
 		if rid, err := strconv.Atoi(numStr); err == nil && rid > 0 {
 			index = rid - 1
 		}
 	}
-
-	master.Printf("Register request: alias=%s, addr=%s:%d -> tentative index=%d", args.Alias, args.Addr, args.Port, index)
+	// === end alias logic ===
 
 	addrPort := fmt.Sprintf("%s:%d", args.Addr, args.Port)
 
-	// if index within bounds but occupied by different node, fall back to append order
-	if index < len(master.nodeList) {
-		if master.nodeList[index] != "" && master.nodeList[index] != addrPort {
-			index = nlen
-		}
-	}
-
-	// if replica already registered at same address, keep index
 	for i, ap := range master.nodeList {
 		if addrPort == ap {
 			index = i
@@ -207,26 +198,15 @@ func (master *Master) Register(args *defs.RegisterArgs, reply *defs.RegisterRepl
 		}
 	}
 
-	// ensure slices large enough
-	if index >= len(master.nodeList) {
-		newLen := index + 1
-		for len(master.nodeList) < newLen {
-			master.nodeList = append(master.nodeList, "")
-			master.addrList = append(master.addrList, "")
-			master.portList = append(master.portList, 0)
-			master.leader = append(master.leader, false)
-			master.alive = append(master.alive, false)
-			master.latencies = append(master.latencies, 0)
-		}
-		nlen = newLen
-	}
-
-	if master.nodeList[index] == "" {
-		master.nodeList[index] = addrPort
-		master.addrList[index] = args.Addr
-		master.portList[index] = args.Port
+	if index == nlen {
+		master.nodeList = master.nodeList[0 : nlen+1]
+		master.nodeList[nlen] = addrPort
+		master.addrList = master.addrList[0 : nlen+1]
+		master.addrList[nlen] = args.Addr
+		master.portList = master.portList[0 : nlen+1]
+		master.portList[nlen] = args.Port
 		master.leader[index] = false
-		master.Printf("Alias %s assigned replicaId %d", args.Alias, index)
+		nlen++
 
 		addr := args.Addr
 		if addr == "" {
@@ -234,22 +214,17 @@ func (master *Master) Register(args *defs.RegisterArgs, reply *defs.RegisterRepl
 		}
 		out, err := exec.Command("ping", addr, "-c 2", "-q").Output()
 		if err == nil {
-			master.latencies[index], _ = strconv.ParseFloat(strings.Split(string(out), "/")[4], 64)
-			master.Printf("node %v [%v] -> %v", index, master.nodeList[index], master.latencies[index])
+			master.latencies[index], _ =
+				strconv.ParseFloat(strings.Split(string(out), "/")[4], 64)
+			master.Printf("node %v [%v] -> %v", index,
+				master.nodeList[index], master.latencies[index])
 		} else {
 			master.Fatal("cannot connect to" + addr)
 		}
 	}
 
 	if nlen == master.N {
-		ready := true
-		for _, ap := range master.nodeList {
-			if ap == "" {
-				ready = false
-				break
-			}
-		}
-		reply.Ready = ready
+		reply.Ready = true
 		reply.ReplicaId = index
 		reply.NodeList = master.nodeList
 		reply.IsLeader = false

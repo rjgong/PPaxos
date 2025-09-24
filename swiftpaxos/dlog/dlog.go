@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var DLOG = true
+var DLOG = false
 
 func Printf(format string, v ...any) {
 
