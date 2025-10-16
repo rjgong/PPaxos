@@ -41,17 +41,27 @@ type PreAccept struct {
 }
 
 type PreAcceptReply struct {
-	Replica       int32
-	Instance      int32
-	Command       []state.Command
-	Deps          []int32
-	CommittedDeps []int32
-	reach         []bool
-	RecvTs        time.Time
+	Replica   int8
+	Instance  int32
+	Command   []state.Command
+	Deps      [MaxN]int32
+	SenderDep int32
+	// RecvTs is stamped by receiver; not part of consensus state
+	RecvTs time.Time
+	// Sender is not serialized; filled by receiver after decode
+	Sender int8
 }
 
 // SetRecvTs allows replica listener to stamp receive time without cross-package import cycles.
-func (p *PreAcceptReply) SetRecvTs(t time.Time) { p.RecvTs = t }
+// If already set (e.g., at Unmarshal), do not override.
+func (p *PreAcceptReply) SetRecvTs(t time.Time) {
+	if p.RecvTs.IsZero() {
+		p.RecvTs = t
+	}
+}
+
+// SetSender allows replica listener to stamp sender id without changing wire format.
+func (p *PreAcceptReply) SetSender(id int8) { p.Sender = id }
 
 type PreAcceptOK struct {
 	Instance int32
@@ -823,20 +833,15 @@ func (p *PreAcceptReplyCache) Put(t *PreAcceptReply) {
 	p.mu.Unlock()
 }
 func (t *PreAcceptReply) Marshal(wire io.Writer) {
-	var b [8]byte
+	var b [10]byte
 	var bs []byte
-	var tmp bool
-	bs = b[:8]
-	tmp32 := t.Replica
-	bs[0] = byte(tmp32)
-	bs[1] = byte(tmp32 >> 8)
-	bs[2] = byte(tmp32 >> 16)
-	bs[3] = byte(tmp32 >> 24)
-	tmp32 = t.Instance
-	bs[4] = byte(tmp32)
-	bs[5] = byte(tmp32 >> 8)
-	bs[6] = byte(tmp32 >> 16)
-	bs[7] = byte(tmp32 >> 24)
+	bs = b[:5]
+	bs[0] = byte(t.Replica)
+	tmp32 := t.Instance
+	bs[1] = byte(tmp32)
+	bs[2] = byte(tmp32 >> 8)
+	bs[3] = byte(tmp32 >> 16)
+	bs[4] = byte(tmp32 >> 24)
 	wire.Write(bs)
 	bs = b[:]
 	alen1 := int64(len(t.Command))
@@ -860,36 +865,13 @@ func (t *PreAcceptReply) Marshal(wire io.Writer) {
 		bs[3] = byte(tmp32 >> 24)
 		wire.Write(bs)
 	}
-	bs = b[:]
-	alen3 := int64(len(t.CommittedDeps))
-	if wlen := binary.PutVarint(bs, alen3); wlen >= 0 {
-		wire.Write(b[0:wlen])
-	}
-	for i := int64(0); i < alen3; i++ {
-		bs = b[:4]
-		tmp32 = t.CommittedDeps[i]
-		bs[0] = byte(tmp32)
-		bs[1] = byte(tmp32 >> 8)
-		bs[2] = byte(tmp32 >> 16)
-		bs[3] = byte(tmp32 >> 24)
-		wire.Write(bs)
-	}
-	bs = b[:]
-	alen4 := int64(len(t.reach))
-	if wlen := binary.PutVarint(bs, alen4); wlen >= 0 {
-		wire.Write(b[0:wlen])
-	}
-	for i := int64(0); i < alen4; i++ {
-		bs = b[:1]
-		tmp = t.reach[i]
-		if tmp {
-			bs[0] = 1
-		} else {
-			bs[0] = 0
-		}
-		wire.Write(bs)
-	}
-	bs = b[:]
+	bs = b[:4]
+	tmp32 = t.SenderDep
+	bs[0] = byte(tmp32)
+	bs[1] = byte(tmp32 >> 8)
+	bs[2] = byte(tmp32 >> 16)
+	bs[3] = byte(tmp32 >> 24)
+	wire.Write(bs)
 
 }
 
@@ -899,14 +881,14 @@ func (t *PreAcceptReply) Unmarshal(rr io.Reader) error {
 	if wire, ok = rr.(byteReader); !ok {
 		wire = bufio.NewReader(rr)
 	}
-	var b [8]byte
+	var b [10]byte
 	var bs []byte
-	bs = b[:8]
-	if _, err := io.ReadAtLeast(wire, bs, 8); err != nil {
+	bs = b[:5]
+	if _, err := io.ReadAtLeast(wire, bs, 5); err != nil {
 		return err
 	}
-	t.Replica = int32((uint32(bs[0]) | (uint32(bs[1]) << 8) | (uint32(bs[2]) << 16) | (uint32(bs[3]) << 24)))
-	t.Instance = int32((uint32(bs[4]) | (uint32(bs[5]) << 8) | (uint32(bs[6]) << 16) | (uint32(bs[7]) << 24)))
+	t.Replica = int8(bs[0])
+	t.Instance = int32((uint32(bs[1]) | (uint32(bs[2]) << 8) | (uint32(bs[3]) << 16) | (uint32(bs[4]) << 24)))
 	alen1, err := binary.ReadVarint(wire)
 	if err != nil {
 		return err
@@ -919,7 +901,7 @@ func (t *PreAcceptReply) Unmarshal(rr io.Reader) error {
 	if err != nil {
 		return err
 	}
-	t.Deps = make([]int32, alen2)
+	t.Deps = [MaxN]int32{}
 	for i := int64(0); i < alen2; i++ {
 		bs = b[:4]
 		if _, err := io.ReadAtLeast(wire, bs, 4); err != nil {
@@ -927,30 +909,13 @@ func (t *PreAcceptReply) Unmarshal(rr io.Reader) error {
 		}
 		t.Deps[i] = int32((uint32(bs[0]) | (uint32(bs[1]) << 8) | (uint32(bs[2]) << 16) | (uint32(bs[3]) << 24)))
 	}
-	alen3, err := binary.ReadVarint(wire)
-	if err != nil {
+	bs = b[:4]
+	if _, err := io.ReadAtLeast(wire, bs, 4); err != nil {
 		return err
 	}
-	t.CommittedDeps = make([]int32, alen3)
-	for i := int64(0); i < alen3; i++ {
-		if _, err := io.ReadAtLeast(wire, bs, 4); err != nil {
-			return err
-		}
-		t.CommittedDeps[i] = int32((uint32(bs[0]) | (uint32(bs[1]) << 8) | (uint32(bs[2]) << 16) | (uint32(bs[3]) << 24)))
-	}
-	alen4, err := binary.ReadVarint(wire)
-	if err != nil {
-		return err
-	}
-	t.reach = make([]bool, alen4)
-	for i := int64(0); i < alen4; i++ {
-		bs = b[:1]
-		if _, err := io.ReadAtLeast(wire, bs, 1); err != nil {
-			return err
-		}
-		t.reach[i] = bs[0] != 0
-	}
-
+	t.SenderDep = int32((uint32(bs[0]) | (uint32(bs[1]) << 8) | (uint32(bs[2]) << 16) | (uint32(bs[3]) << 24)))
+	// Stamp receive time at the earliest point after fully reading from the wire
+	t.RecvTs = time.Now()
 	return nil
 }
 

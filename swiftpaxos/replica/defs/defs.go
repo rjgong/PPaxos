@@ -5,6 +5,8 @@ import (
 	"io"
 	"sync"
 
+	fastrpc "github.com/imdea-software/swiftpaxos/rpc"
+
 	"github.com/imdea-software/swiftpaxos/state"
 )
 
@@ -49,6 +51,7 @@ const (
 	GENERIC_SMR_BEACON
 	GENERIC_SMR_BEACON_REPLY
 	STATS
+	LATENCIES_BROADCAST
 	RPC_TABLE
 )
 
@@ -929,3 +932,84 @@ func (t *Beacon) Unmarshal(wire io.Reader) error {
 	t.Timestamp = int64((uint64(bs[0]) | (uint64(bs[1]) << 8) | (uint64(bs[2]) << 16) | (uint64(bs[3]) << 24) | (uint64(bs[4]) << 32) | (uint64(bs[5]) << 40) | (uint64(bs[6]) << 48) | (uint64(bs[7]) << 56)))
 	return nil
 }
+
+// LatenciesMsg carries average RTTs from one replica to others.
+type LatenciesMsg struct {
+	Rid       int32
+	Latencies []int64 // length N
+}
+
+func (t *LatenciesMsg) BinarySize() (nbytes int, sizeKnown bool) {
+	return 8 + len(t.Latencies)*8, true // 4 bytes for len, 4 for rid? actually rid 4 bytes, len 4 bytes
+}
+
+func (t *LatenciesMsg) Marshal(w io.Writer) {
+	var b [8]byte
+	var bs []byte
+	// rid int32
+	bs = b[:4]
+	tmp32 := t.Rid
+	bs[0] = byte(tmp32)
+	bs[1] = byte(tmp32 >> 8)
+	bs[2] = byte(tmp32 >> 16)
+	bs[3] = byte(tmp32 >> 24)
+	w.Write(bs)
+
+	// length int32
+	l := int32(len(t.Latencies))
+	bs = b[:4]
+	bs[0] = byte(l)
+	bs[1] = byte(l >> 8)
+	bs[2] = byte(l >> 16)
+	bs[3] = byte(l >> 24)
+	w.Write(bs)
+
+	// write each int64
+	for _, v := range t.Latencies {
+		bs = b[:8]
+		tmp64 := v
+		bs[0] = byte(tmp64)
+		bs[1] = byte(tmp64 >> 8)
+		bs[2] = byte(tmp64 >> 16)
+		bs[3] = byte(tmp64 >> 24)
+		bs[4] = byte(tmp64 >> 32)
+		bs[5] = byte(tmp64 >> 40)
+		bs[6] = byte(tmp64 >> 48)
+		bs[7] = byte(tmp64 >> 56)
+		w.Write(bs)
+	}
+}
+
+func (t *LatenciesMsg) Unmarshal(r io.Reader) error {
+	var b [8]byte
+	var bs []byte
+
+	// rid int32
+	bs = b[:4]
+	if _, err := io.ReadAtLeast(r, bs, 4); err != nil {
+		return err
+	}
+	t.Rid = int32(uint32(bs[0]) | uint32(bs[1])<<8 | uint32(bs[2])<<16 | uint32(bs[3])<<24)
+
+	// len
+	if _, err := io.ReadAtLeast(r, bs, 4); err != nil {
+		return err
+	}
+	l := int(int32(uint32(bs[0]) | uint32(bs[1])<<8 | uint32(bs[2])<<16 | uint32(bs[3])<<24))
+	if l < 0 {
+		return io.ErrUnexpectedEOF
+	}
+	t.Latencies = make([]int64, l)
+
+	// read each int64
+	for i := 0; i < l; i++ {
+		bs = b[:8]
+		if _, err := io.ReadAtLeast(r, bs, 8); err != nil {
+			return err
+		}
+		t.Latencies[i] = int64((uint64(bs[0]) | uint64(bs[1])<<8 | uint64(bs[2])<<16 | uint64(bs[3])<<24 | uint64(bs[4])<<32 | uint64(bs[5])<<40 | uint64(bs[6])<<48 | uint64(bs[7])<<56))
+	}
+	return nil
+}
+
+func (t *LatenciesMsg) New() fastrpc.Serializable { return &LatenciesMsg{} }

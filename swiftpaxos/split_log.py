@@ -9,7 +9,7 @@ import sys
 import argparse
 from pathlib import Path
 
-def split_log_file(input_file, chunk_size_mb=100, output_dir=None):
+def split_log_file(input_file, chunk_size_mb=50, output_dir=None):
     """
     拆分日志文件
     
@@ -85,7 +85,7 @@ def split_log_file(input_file, chunk_size_mb=100, output_dir=None):
 def main():
     parser = argparse.ArgumentParser(description='将日志文件按指定大小拆分')
     parser.add_argument('input_file', help='要拆分的日志文件路径')
-    parser.add_argument('-s', '--size', type=int, default=100, 
+    parser.add_argument('-s', '--size', type=int, default=50, 
                        help='每个分块的大小（MB），默认100MB')
     parser.add_argument('-o', '--output', help='输出目录，默认使用输入文件所在目录')
     

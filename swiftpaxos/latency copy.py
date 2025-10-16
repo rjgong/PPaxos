@@ -441,20 +441,9 @@ def check_pentagon_property_with_leader(df: pd.DataFrame, nodes: List[str]) -> T
         for y in range(n):
             if x != y:
                 dist_matrix[x][y] = delay_matrix[(nodes[x], nodes[y])]
-    # 重新计算：要求 leader 优先级固定为 0，其余节点穷举
-    leader_idx = nodes.index(leader)
-    other_indices = [i for i in range(n) if i != leader_idx]
-    min_total_value = float('inf')
-    best_priorities = None
-    from itertools import permutations as _perms
-    for perm in _perms(range(1, n), n-1):
-        priorities = [0]*n  # 初始化
-        for idx, node_idx in enumerate(other_indices):
-            priorities[node_idx] = perm[idx]
-        total_val = calculate_total_value(dist_matrix, priorities)
-        if total_val < min_total_value:
-            min_total_value = total_val
-            best_priorities = priorities
+    # 不再固定 leader 的优先级：遍历所有优先级排列，选择最优解
+    optimal_arrangements, min_total_value = find_optimal_priorities(dist_matrix)
+    best_priorities = optimal_arrangements[0]
 
     # 逐节点值
     method1_values = [calculate_node_value(dist_matrix, idx, best_priorities) * 2 for idx in range(n)]

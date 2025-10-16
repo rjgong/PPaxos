@@ -8,6 +8,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -55,6 +56,10 @@ type Replica struct {
 	Beacon  bool
 	Durable bool
 
+	// Broadcast of average RTTs
+	LatBroadcasted bool
+	PeerLatencies  map[int32][]int64
+
 	Ewma      []float64
 	Latencies []int64
 
@@ -83,7 +88,7 @@ func New(alias string, id, f int, addrs []string, thrifty, exec, lread bool, con
 		State:        state.InitState(),
 		RPC:          fastrpc.NewTableId(defs.RPC_TABLE),
 		StableStore:  nil,
-		Stats:        &defs.Stats{make(map[string]int)},
+		Stats:        &defs.Stats{M: make(map[string]int)},
 		Shutdown:     false,
 		Listener:     nil,
 		ProposeChan:  make(chan *defs.GPropose, defs.CHAN_BUFFER_SIZE),
@@ -96,6 +101,9 @@ func New(alias string, id, f int, addrs []string, thrifty, exec, lread bool, con
 		Dreply:  true,
 		Beacon:  false,
 		Durable: false,
+
+		LatBroadcasted: false,
+		PeerLatencies:  make(map[int32][]int64),
 
 		Ewma:      make([]float64, n),
 		Latencies: make([]int64, n),
@@ -215,20 +223,33 @@ func (r *Replica) WaitForClientConnections() {
 }
 
 func (r *Replica) SendMsg(peerId int32, code uint8, msg fastrpc.Serializable) {
+	// observe lock wait for global mutex
+	lt := time.Now()
+	r.PrintDebug("r.M locking", "where", "SendMsg", "peer", peerId, "time", lt)
 	r.M.Lock()
+	r.PrintDebug("r.M locked", "where", "SendMsg", "peer", peerId, "lock_wait", time.Since(lt))
 	defer r.M.Unlock()
 	w := r.PeerWriters[peerId]
 	if w == nil {
 		r.Printf("Connection to %d lost!", peerId)
 		return
 	}
+	r.PrintDebug("about to send to peer", peerId, "rpc", code, "time", time.Now())
+	tEnc := time.Now()
 	w.WriteByte(code)
 	msg.Marshal(w)
+	tFlush := time.Now()
+	pre := w.Buffered()
+	r.PrintDebug("send flush start", "peer", peerId, "rpc", code, "encode_dur", tFlush.Sub(tEnc), "buf_before", pre)
 	w.Flush()
+	r.PrintDebug("send flush end", "peer", peerId, "rpc", code, "flush_dur", time.Since(tFlush), "buf_after", w.Buffered())
 }
 
 func (r *Replica) SendClientMsg(id int32, code uint8, msg fastrpc.Serializable) {
+	lt := time.Now()
+	r.PrintDebug("r.M locking", "where", "SendClientMsg", "client", id, "time", lt)
 	r.M.Lock()
+	r.PrintDebug("r.M locked", "where", "SendClientMsg", "client", id, "lock_wait", time.Since(lt))
 	defer r.M.Unlock()
 
 	w := r.ClientWriters[id]
@@ -236,13 +257,17 @@ func (r *Replica) SendClientMsg(id int32, code uint8, msg fastrpc.Serializable) 
 		r.Printf("Connection to client %d lost!", id)
 		return
 	}
+	r.PrintDebug("about to send to client", id, "rpc", code, "time", time.Now())
 	w.WriteByte(code)
 	msg.Marshal(w)
 	w.Flush()
 }
 
 func (r *Replica) SendMsgNoFlush(peerId int32, code uint8, msg fastrpc.Serializable) {
+	lt := time.Now()
+	r.PrintDebug("r.M locking", "where", "SendMsgNoFlush", "peer", peerId, "time", lt)
 	r.M.Lock()
+	r.PrintDebug("r.M locked", "where", "SendMsgNoFlush", "peer", peerId, "lock_wait", time.Since(lt))
 	defer r.M.Unlock()
 
 	w := r.PeerWriters[peerId]
@@ -250,20 +275,28 @@ func (r *Replica) SendMsgNoFlush(peerId int32, code uint8, msg fastrpc.Serializa
 		r.Printf("Connection to %d lost!", peerId)
 		return
 	}
+	tEnc := time.Now()
 	w.WriteByte(code)
 	msg.Marshal(w)
+	r.PrintDebug("send noflush", "peer", peerId, "rpc", code, "encode_dur", time.Since(tEnc), "buf_now", w.Buffered())
 }
 
 func (r *Replica) ReplyProposeTS(reply *defs.ProposeReplyTS, w *bufio.Writer, lock *sync.Mutex) {
-	r.M.Lock()
-	defer r.M.Unlock()
-
+	// Use per-client lock to avoid blocking global mutex on client IO
+	if lock != nil {
+		lock.Lock()
+		defer lock.Unlock()
+	}
+	r.PrintDebug("about to reply to client (ReplyProposeTS)", time.Now(), "cmdId", reply.CommandId)
 	reply.Marshal(w)
 	w.Flush()
 }
 
 func (r *Replica) SendBeacon(peerId int32) {
+	lt := time.Now()
+	r.PrintDebug("r.M locking", "where", "SendBeacon", "peer", peerId, "time", lt)
 	r.M.Lock()
+	r.PrintDebug("r.M locked", "where", "SendBeacon", "peer", peerId, "lock_wait", time.Since(lt))
 	defer r.M.Unlock()
 
 	w := r.PeerWriters[peerId]
@@ -280,7 +313,10 @@ func (r *Replica) SendBeacon(peerId int32) {
 }
 
 func (r *Replica) ReplyBeacon(beacon *defs.GBeacon) {
+	lt := time.Now()
+	r.PrintDebug("r.M locking", "where", "ReplyBeacon", "peer", beacon.Rid, "time", lt)
 	r.M.Lock()
+	r.PrintDebug("r.M locked", "where", "ReplyBeacon", "peer", beacon.Rid, "lock_wait", time.Since(lt))
 	defer r.M.Unlock()
 
 	w := r.PeerWriters[beacon.Rid]
@@ -380,6 +416,30 @@ func (r *Replica) ComputeClosestPeers() []float64 {
 		latencies[i] = lat
 	}
 
+	// Broadcast the average RTTs once to all peers.
+	if !r.LatBroadcasted {
+		// Convert to average RTT in milliseconds
+		avgMs := make([]int64, len(r.Latencies))
+		for i, tot := range r.Latencies {
+			avgMs[i] = tot / int64(npings) / 1_000_000 // ns -> ms
+		}
+
+		msg := &defs.LatenciesMsg{
+			Rid:       r.Id,
+			Latencies: avgMs,
+		}
+
+		r.Println("LAT_BROADCAST", msg.Rid, msg.Latencies)
+
+		for pid := int32(0); pid < int32(r.N); pid++ {
+			if pid == r.Id {
+				continue
+			}
+			r.SendMsg(pid, defs.LATENCIES_BROADCAST, msg)
+		}
+		r.LatBroadcasted = true
+	}
+
 	return latencies
 }
 
@@ -423,9 +483,13 @@ func (r *Replica) replicaListener(rid int, reader *bufio.Reader) {
 	)
 
 	for err == nil && !r.Shutdown {
+		// Earliest userland point before any read: attempting to read msg type
+		//r.PrintDebug("before read msgType", "from", rid, "time", time.Now())
 		if msgType, err = reader.ReadByte(); err != nil {
 			break
 		}
+		// Earliest point after kernel returns a byte: message type received
+		r.PrintDebug("recv msgType", "from", rid, "type", msgType, "time", time.Now())
 
 		switch uint8(msgType) {
 
@@ -450,20 +514,76 @@ func (r *Replica) replicaListener(rid int, reader *bufio.Reader) {
 			r.Ewma[rid] = 0.99*r.Ewma[rid] + 0.01*float64(now-gbeaconReply.Timestamp)
 			break
 
+		case defs.LATENCIES_BROADCAST:
+			latmsg := &defs.LatenciesMsg{}
+			if err = latmsg.Unmarshal(reader); err != nil {
+				break
+			}
+			r.M.Lock()
+			r.PeerLatencies[latmsg.Rid] = latmsg.Latencies
+			r.M.Unlock()
+			r.Println("LAT_RECEIVED", latmsg.Rid, latmsg.Latencies) // already in ms
+			break
+
 		default:
 			p, exists := r.RPC.Get(msgType)
 			if exists {
 				obj := p.Obj.New()
+				// Just before decoding payload
+				//r.PrintDebug("about to decode", "from", rid, "type", msgType, "time", time.Now())
 				if err = obj.Unmarshal(reader); err != nil {
 					break
 				}
 				if ts, ok := obj.(interface{ SetRecvTs(time.Time) }); ok {
+					// stamp the earliest receive time
 					ts.SetRecvTs(time.Now())
 				}
-				go func(obj fastrpc.Serializable) {
-					time.Sleep(r.Dt.WaitDurationID(rid))
+				// stamp sender id if message supports it (no wire change)
+				if ss, ok := obj.(interface{ SetSender(int8) }); ok {
+					ss.SetSender(int8(rid))
+				}
+				// earliest userland log: fully decoded and before enqueue to channel
+				repId, instId := int32(-1), int32(-1)
+				// best-effort extract fields via reflection without importing eppaxos (avoid cycles)
+				if rv := reflect.ValueOf(obj); rv.Kind() == reflect.Ptr {
+					v := rv.Elem()
+					if v.IsValid() {
+						if f := v.FieldByName("Replica"); f.IsValid() && f.Kind() == reflect.Int32 {
+							repId = int32(f.Int())
+						}
+						if f := v.FieldByName("Instance"); f.IsValid() && f.Kind() == reflect.Int32 {
+							instId = int32(f.Int())
+						}
+					}
+				}
+				if repId != -1 || instId != -1 {
+					r.PrintDebug("wire recv done", "from", rid, "type", msgType, "replica", repId, "inst", instId, "time", time.Now())
+				} else {
+					r.PrintDebug("wire recv done", "from", rid, "type", msgType, "time", time.Now())
+				}
+				// Enqueue with optional simulated delay; avoid goroutine/Sleep(0) when delay is zero
+				var delay time.Duration
+				if r.Dt != nil {
+					delay = r.Dt.WaitDurationID(rid)
+				}
+				if delay == 0 {
+					ts := time.Now()
 					p.Chan <- obj
-				}(obj)
+					blk := time.Since(ts)
+					if blk > 100*time.Microsecond {
+						r.PrintDebug("chan enqueue blocked", "from", rid, "type", msgType, "block_dur", blk, "time", time.Now())
+					}
+				} else {
+					go func(obj fastrpc.Serializable, d time.Duration) {
+						time.Sleep(d)
+						ts := time.Now()
+						p.Chan <- obj
+						blk := time.Since(ts)
+						if blk > 100*time.Microsecond {
+							r.PrintDebug("chan enqueue blocked", "from", rid, "type", msgType, "block_dur", blk, "time", time.Now())
+						}
+					}(obj, delay)
+				}
 			} else {
 				r.Fatal("Error: received unknown message type ", msgType, " from ", rid)
 			}
@@ -484,9 +604,9 @@ func (r *Replica) clientListener(conn net.Conn) {
 		err     error
 	)
 
-	r.M.Lock()
-	r.Println("Client up", conn.RemoteAddr(), "(", r.LRead, ")")
-	r.M.Unlock()
+	//r.M.Lock()
+	//r.Println("Client up", conn.RemoteAddr(), "(", r.LRead, ")")
+	//r.M.Unlock()
 
 	addr := strings.Split(conn.RemoteAddr().String(), ":")[0]
 	isProxy := r.Config.Proxy.IsProxy(r.Alias, addr)
@@ -496,6 +616,8 @@ func (r *Replica) clientListener(conn net.Conn) {
 	dchan := defs.NewDelayProposeChan(r.Dt.WaitDuration(addr), r.ProposeChan)
 
 	for !r.Shutdown && err == nil {
+		// Earliest userland point before any client read
+		r.PrintDebug("before read client msgType", conn.RemoteAddr(), "time", time.Now())
 		if msgType, err = reader.ReadByte(); err != nil {
 			break
 		}

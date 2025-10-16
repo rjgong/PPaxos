@@ -4,7 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -31,6 +34,16 @@ var (
 
 func main() {
 	flag.Parse()
+
+	// enable mutex profile (sample every contention)
+	runtime.SetMutexProfileFraction(1)
+
+	// start pprof HTTP server
+	go func() {
+		if err := http.ListenAndServe("0.0.0.0:6060", nil); err != nil {
+			log.Println("pprof server error:", err)
+		}
+	}()
 
 	if *confs == "" {
 		flag.Usage()

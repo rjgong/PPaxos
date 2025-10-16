@@ -1,6 +1,11 @@
 package swift
 
-import fastrpc "github.com/imdea-software/swiftpaxos/rpc"
+import (
+	"bytes"
+	"time"
+
+	fastrpc "github.com/imdea-software/swiftpaxos/rpc"
+)
 
 type Batcher struct {
 	fastAcks      chan BatcherOp
@@ -139,7 +144,23 @@ func NewBatcher(r *Replica, size int,
 					m = acks
 					rpc = r.cs.acksRPC
 				}
+				// encode size & timing
+				encStart := time.Now()
+				var encSize int
+				{
+					var buf bytes.Buffer
+					m.Marshal(&buf)
+					encSize = buf.Len()
+				}
+				encDur := time.Since(encStart)
+				sendStart := time.Now()
+				if ballot != -1 {
+					r.PrintDebug("swift batch: about to send", "rpc", rpc, "type", "optAcks", "acks", len(optAcks.Acks), "encode_dur", encDur, "encode_size", encSize, "time", sendStart)
+				} else {
+					r.PrintDebug("swift batch: about to send", "rpc", rpc, "type", "acks", "fast_acks", len(acks.FastAcks), "slow_acks", len(acks.LightSlowAcks), "encode_dur", encDur, "encode_size", encSize, "time", sendStart)
+				}
 				r.sender.SendToAll(m, rpc)
+				r.PrintDebug("swift batch: sent", "rpc", rpc, "send_all_dur", time.Since(sendStart))
 
 			case op := <-b.lightSlowAcks:
 				slowAck := op.msg.(*MLightSlowAck)
@@ -247,7 +268,23 @@ func NewBatcher(r *Replica, size int,
 					m = acks
 					rpc = r.cs.acksRPC
 				}
+				// encode size & timing
+				encStart := time.Now()
+				var encSize int
+				{
+					var buf bytes.Buffer
+					m.Marshal(&buf)
+					encSize = buf.Len()
+				}
+				encDur := time.Since(encStart)
+				sendStart := time.Now()
+				if ballot != -1 {
+					r.PrintDebug("swift batch: about to send", "rpc", rpc, "type", "optAcks", "acks", len(optAcks.Acks), "encode_dur", encDur, "encode_size", encSize, "time", sendStart)
+				} else {
+					r.PrintDebug("swift batch: about to send", "rpc", rpc, "type", "acks", "fast_acks", len(acks.FastAcks), "slow_acks", len(acks.LightSlowAcks), "encode_dur", encDur, "encode_size", encSize, "time", sendStart)
+				}
 				r.sender.SendToAll(m, rpc)
+				r.PrintDebug("swift batch: sent", "rpc", rpc, "send_all_dur", time.Since(sendStart))
 			}
 		}
 	}()

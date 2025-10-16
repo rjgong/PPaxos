@@ -1,12 +1,5 @@
 package eppaxos
 
-import (
-	"sort"
-
-	"github.com/imdea-software/swiftpaxos/replica/defs"
-	"github.com/imdea-software/swiftpaxos/state"
-)
-
 const (
 	WHITE int8 = iota
 	GRAY
@@ -55,7 +48,7 @@ func (e *Exec) findSCC(root *Instance) bool {
 	//e.r.PrintDebug("findSCC", "root", root.id.instance, "ret", ret)
 	// reset all indexes in the stack
 	for j := 0; j < len(stack); j++ {
-		stack[j].Index = 0
+		//stack[j].Index = 0
 	}
 	//e.r.PrintDebug("findSCC", "stack", stack)
 	return ret
@@ -63,8 +56,8 @@ func (e *Exec) findSCC(root *Instance) bool {
 
 func (e *Exec) strongconnect(v *Instance, index *int) bool {
 
-	v.Index = *index
-	v.Lowlink = *index
+	//v.Index = *index
+	//v.Lowlink = *index
 	*index = *index + 1
 
 	l := len(stack)
@@ -77,7 +70,7 @@ func (e *Exec) strongconnect(v *Instance, index *int) bool {
 	stack[l] = v
 
 	if v.Cmds == nil {
-		e.r.PrintDebug("Command", v.id.instance, "on replica", v.id.replica, "has no commands")
+		//e.r.PrintDebug("Command", v.id.instance, "on replica", v.id.replica, "has no commands")
 		return false
 	}
 
@@ -85,7 +78,7 @@ func (e *Exec) strongconnect(v *Instance, index *int) bool {
 		inst := v.Deps[q]
 		for i := e.r.ExecedUpTo[q] + 1; i <= inst; i++ {
 			if e.r.InstanceSpace[q][i] == nil || e.r.InstanceSpace[q][i].Cmds == nil {
-				e.r.PrintDebug("Command", v.id.instance, "on replica", v.id.replica, "has no commands2")
+				//e.r.PrintDebug("Command", v.id.instance, "on replica", v.id.replica, "has no commands2")
 				return false
 			}
 
@@ -104,16 +97,16 @@ func (e *Exec) strongconnect(v *Instance, index *int) bool {
 			}
 
 			for e.r.InstanceSpace[q][i].Status != COMMITTED {
-				e.r.PrintDebug("Command", v.id.instance, "on replica", v.id.replica, "has not been committed", "replica", q, "instance", i, "status", e.r.InstanceSpace[q][i].Status)
+				//e.r.PrintDebug("Command", v.id.instance, "on replica", v.id.replica, "has not been committed", "replica", q, "instance", i, "status", e.r.InstanceSpace[q][i].Status)
 
 				return false
 			}
 
-			w := e.r.InstanceSpace[q][i]
+			//w := e.r.InstanceSpace[q][i]
 
-			if w.Index == 0 {
+			/*if w.Index == 0 {
 				if !e.strongconnect(w, index) {
-					e.r.PrintDebug("Command 2", v.id.instance, "on replica", v.id.replica, "has not been committed", "replica", q, "instance", i, "status", e.r.InstanceSpace[q][i].Status)
+					//e.r.PrintDebug("Command 2", v.id.instance, "on replica", v.id.replica, "has not been committed", "replica", q, "instance", i, "status", e.r.InstanceSpace[q][i].Status)
 					return false
 				}
 				if w.Lowlink < v.Lowlink {
@@ -123,11 +116,11 @@ func (e *Exec) strongconnect(v *Instance, index *int) bool {
 				if w.Index < v.Lowlink {
 					v.Lowlink = w.Index
 				}
-			}
+			}*/
 		}
 	}
 
-	if v.Lowlink == v.Index {
+	/*if v.Lowlink == v.Index {
 		//found SCC
 		list := stack[l:]
 
@@ -153,12 +146,12 @@ func (e *Exec) strongconnect(v *Instance, index *int) bool {
 					w.Cmds[idx].Execute(e.r.State)
 				}
 			}
-			e.r.PrintDebug("Command", w.id.instance, "on replica", w.id.replica, "is executed")
+			//e.r.PrintDebug("Command", w.id.instance, "on replica", w.id.replica, "is executed")
 			w.Status = EXECUTED
 		}
 		stack = stack[0:l]
-	}
-	e.r.PrintDebug("Command 3", v.id.instance, "on replica", v.id.replica, "is a SCC")
+	}*/
+	//e.r.PrintDebug("Command 3", v.id.instance, "on replica", v.id.replica, "is a SCC")
 	return true
 }
 
@@ -178,7 +171,7 @@ func (na nodeArray) Len() int {
 }
 
 func (na nodeArray) Less(i, j int) bool {
-	return na[i].Seq < na[j].Seq || (na[i].Seq == na[j].Seq && na[i].id.replica < na[j].id.replica) || (na[i].Seq == na[j].Seq && na[i].id.replica == na[j].id.replica && na[i].proposeTime < na[j].proposeTime)
+	return true
 }
 
 func (na nodeArray) Swap(i, j int) {

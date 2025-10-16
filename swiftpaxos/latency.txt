@@ -941,3 +941,51 @@ Leader选举结果:
 
 组合整体验证：
   ✓ 方法1/方法2 = 0.840 < 0.8，符合要求
+
+
+
+
+  延迟矩阵 (ms):
+               ap-southeast-2 ap-northeast-2 ap-southeast-7(L)ap-east-2      ap-south-1     
+ap-southeast-2             ---         147.14         123.13         153.26         156.19
+ap-northeast-2          147.14            ---         101.36          65.56         133.15
+ap-southeast-7(L)         123.13         101.36            ---          96.78          92.57
+ap-east-2               153.26          65.56          96.78            ---         129.29
+ap-south-1              156.19         133.15          92.57         129.29            ---
+
+
+
+
+
+
+
+
+
+找到满足条件的组合 #6: ['ap-southeast-3', 'af-south-1', 'il-central-1', 'ca-west-1', 'sa-east-1']
+   Leader: ca-west-1
+   优先级顺序(高->低): ['ap-southeast-3', 'ca-west-1', 'il-central-1', 'af-south-1', 'sa-east-1']
+   方法1平均延迟: 497.16ms
+   方法2平均延迟: 615.30ms
+   比值(Method1/Method2): 0.808
+   节点级别值(方法1 vs 方法2):
+     ap-southeast-3: 409.21ms  |  409.21ms
+     af-south-1: 592.51ms  |  733.76ms
+     il-central-1: 414.20ms  |  603.43ms
+     ca-west-1: 388.51ms  |  603.43ms
+     sa-east-1: 681.37ms  |  726.67ms
+
+延迟矩阵 (ms):
+               ap-southeast-3 af-south-1     il-central-1   ca-west-1(L)   sa-east-1      
+ap-southeast-3             ---         296.25         204.61         191.73         340.69
+af-south-1              296.25            ---         232.91         292.53         336.84
+il-central-1            204.61         232.91            ---         207.10         248.82
+ca-west-1(L)            191.73         292.53         207.10            ---         194.25
+sa-east-1               340.69         336.84         248.82         194.25            ---
+
+Leader选举结果:
+  ca-west-1: 总延迟 = 885.61ms ← Leader
+  il-central-1: 总延迟 = 893.43ms
+  ap-southeast-3: 总延迟 = 1033.27ms
+
+组合整体验证：
+  ✓ 方法1/方法2 = 0.808 < 0.8，符合要求
