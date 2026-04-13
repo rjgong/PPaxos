@@ -5,7 +5,7 @@ import csv
 import sys
 
 sys.path.insert(0, "./scripts")
-from swiftpaxos.scripts.keep.utils import aggregate_alias
+from swiftpaxos.scripts.utils import aggregate_alias
 
 protocols = ["curp", "epaxos", "eppaxos", "swiftpaxos", "paxos"]
 aliases = ["client1", "client2", "client3", "client4", "client5"]

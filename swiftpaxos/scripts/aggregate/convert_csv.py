@@ -4,7 +4,7 @@ from datetime import datetime
 import sys
 
 sys.path.insert(0, "./scripts")
-from swiftpaxos.scripts.keep.utils import is_float
+from swiftpaxos.scripts.utils import is_float
 
 # ROOT_PATH = "/mnt/share/exp"
 ROOT_PATH = "out"

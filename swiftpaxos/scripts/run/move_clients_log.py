@@ -4,7 +4,7 @@ import math
 from threading import Thread
 
 sys.path.insert(0, "./scripts")
-from swiftpaxos.scripts.keep.utils import read_json
+from swiftpaxos.scripts.utils import read_json
 
 exps = [41]
 

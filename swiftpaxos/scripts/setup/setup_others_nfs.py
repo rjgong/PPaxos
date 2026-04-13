@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, "./scripts")
-from swiftpaxos.scripts.keep.utils import read_json
+from swiftpaxos.scripts.utils import read_json
 
 # Set up nfs for everyone else
 
